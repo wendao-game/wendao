@@ -106,6 +106,13 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .fig .m0{left:1%}
 .fig .m1{right:1%;animation-delay:-1.7s}
 .fig .m2{left:1%;top:20%;width:23%;animation-delay:-3s}
+/* 立绘图片版：正方形透明图，人物约占图高 85% */
+/* 头顶要落在修为进度环（半径约 27%）之内，免得挡住进度起点 */
+.fig .me.art{left:21%;top:20%;width:58%;aspect-ratio:1}
+.fig .me.art img,.fig .mate.art img{display:block;width:100%;height:100%;max-width:none}
+.fig .mate.art{aspect-ratio:1}
+.bust{position:relative;width:100%;height:100%;overflow:hidden}
+.bust img{position:absolute;width:300%;max-width:none;left:50%;top:-14%;transform:translateX(-50%)}
 @keyframes breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 .pt{flex:none;width:76px;height:80px;border-radius:8px;background:radial-gradient(circle at 50% 40%,var(--line),var(--panel) 75%);border:1px solid var(--line);overflow:hidden}
 .pt svg{display:block;width:100%;height:100%}
@@ -1011,18 +1018,30 @@ function figSvg(L, id, bust) {
   if (L.acc === 'herb') o.push(P('M126,44 C132,32 146,28 154,32 C148,42 136,48 126,44 Z', '#7cc48f', 'stroke-width="1.1"') + `<path d="M126,44 L150,33" stroke="#3a7a4f" stroke-width="1.1"/>` + P('M124,46 C122,34 128,24 136,22 C138,32 132,42 124,46 Z', '#9fd6a8', 'stroke-width="1.1"'));
   return `<svg viewBox="${bust ? '38 4 124 132' : '0 0 200 220'}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${o.join('')}</svg>`;
 }
+/* 立绘图片：主角按境界分六阶，男女各一张；还没有图的阶段仍用 SVG */
+const ART = { m1: 'img/m1.webp', f1: 'img/f1.webp' };
+for (let k = 2; k <= 6; k++) { ART['m' + k] = `img/m${k}.png`; ART['f' + k] = `img/f${k}.png`; }
+const artStage = r => r === 0 ? 1 : r <= 2 ? 2 : r <= 4 ? 3 : r <= 7 ? 4 : r === 8 ? 5 : 6;
+const playerArt = () => ART[S.sex + artStage(S.started || S.lv ? realm() : 0)];
+const playerBust = id => { const a = playerArt(); return a ? `<div class="bust"><img src="${a}" alt=""></div>` : figSvg(playerLook(), id, true); };
+/* 道侣立绘：按出身与性别各一张 */
+const ORIG_ART = { '天音阁弟子': 'tianyin', '药王谷传人': 'yaowang', '独行散修': 'sanxiu', '剑宗少主': 'jianzong',
+  '万花宫弟子': 'wanhua', '没落世家之后': 'shijia', '化形的灵狐': 'linghu' };
+const compArt = c => ORIG_ART[c.orig] ? `img/${ORIG_ART[c.orig]}_${c.sex === 'f' ? 'f' : 'm'}.png` : '';
+const compBust = (c, id) => { const a = compArt(c); return a ? `<div class="bust"><img src="${a}" alt=""></div>` : figSvg(c.look, id, true); };
 /* 阵盘中央：本人打坐，道侣陪坐两侧 */
 function figHtml() {
-  const ps = partners().slice(0, 3);
-  return ps.map((c, i) => `<div class="mate m${i}">${figSvg(Object.assign({}, c.look, { eyes: 'closed' }), 'pm' + i)}</div>`).join('')
-    + `<div class="me">${figSvg(playerLook(), 'pl')}</div>`;
+  const ps = partners().slice(0, 3), a = playerArt();
+  return ps.map((c, i) => { const ca = compArt(c);
+    return ca ? `<div class="mate art m${i}"><img src="${ca}" alt=""></div>` : `<div class="mate m${i}">${figSvg(Object.assign({}, c.look, { eyes: 'closed' }), 'pm' + i)}</div>`; }).join('')
+    + (a ? `<div class="me art"><img src="${a}" alt=""></div>` : `<div class="me">${figSvg(playerLook(), 'pl')}</div>`);
 }
 
 /* ---------- 抉择事件 ---------- */
 const EVENTS = {
   meet: {
     view: ev => ({ t: '邂逅', cls: 'rose',
-      body: `<div class="meet-pt">${figSvg(ev.c.look, 'meet', true)}</div>
+      body: `<div class="meet-pt">${compBust(ev.c, 'meet')}</div>
         <p>${esc(MEETS[ev.s || 0](ev.c, ev.place))}</p>
         <p class="m">${esc(ev.c.name)}，${ev.c.orig}，${ev.c.trait}，修为${LEVELS[ev.c.lv].name}。</p>`,
       opts: [['结为知己', '日后可赠礼、论道、同游，情谊深厚后可结为道侣'
@@ -1039,7 +1058,7 @@ const EVENTS = {
   },
   reveal: {
     view: ev => { const c = S.comps[ev.ci], p = c.name; return { t: '身世', cls: 'red',
-      body: `<div class="meet-pt">${figSvg(c.look, 'rev', true)}</div>
+      body: `<div class="meet-pt">${compBust(c, 'rev')}</div>
         <p>深夜，你撞见${esc(p)}与一名黑袍人在后山密会。原来${esc(p)}是血煞魔宗安插在正道的暗子，接近你本是奉命行事。</p>
         <p>黑袍人走后，${esc(p)}在你面前跪下，没有辩解，只说了一句：「后来的那些，都是真的。」</p>`,
       opts: [['护其周全，一同叛出宗门', '从此成为散修，宗门月俸只剩三成，心魔 +20'],
@@ -1513,13 +1532,15 @@ function showModal() {
   if (!S.started) {
     m.hidden = false;
     const R = S.root ? root() : null;
+    /* 预载另一性别的立绘，切换时头像不留空 */
+    ['m', 'f'].forEach(x => { const a = ART[x + artStage(0)]; if (a) new Image().src = a; });
     c.innerHTML = `<h2>入道</h2>
       <p>${S.reinc
         ? `第${cn(S.reinc + 1)}世。前世记忆犹存：功法《${gongfaName(S.gongfa)}》，修炼速度 +${S.reinc * 25}%。`
         : `你十六岁那年，叩开了${SECT}的山门。外门执事递来一块测灵石。`}</p>
       <label for="dao-name">道号</label>
       <input id="dao-name" maxlength="6" value="${esc(S.name)}" autocomplete="off">
-      <div class="sexrow"><div class="meet-pt">${figSvg(playerLook(), 'pv', true)}</div>
+      <div class="sexrow"><div class="meet-pt">${playerBust('pv')}</div>
         <div class="row"><button class="btn ${S.sex === 'm' ? 'gold' : ''}" data-act="sex" data-v="m" type="button">男修</button>
         <button class="btn ${S.sex === 'f' ? 'gold' : ''}" data-act="sex" data-v="f" type="button">女修</button></div></div>
       <div class="rootbox" id="rootbox">${R
@@ -1677,12 +1698,12 @@ function sideComp() {
   const gc = giftCost();
   const cards = S.comps.map((c, ci) => {
     const key = 'comp:' + ci + ':';
-    if (!c.alive) return `<div class="mc dead"><div class="mc-top"><div class="pt">${figSvg(c.look, 'cd' + ci, true)}</div>
+    if (!c.alive) return `<div class="mc dead"><div class="mc-top"><div class="pt">${compBust(c, 'cd' + ci)}</div>
       <div class="mc-info"><span class="mc-name">${esc(c.name)}</span><p class="note">故人已逝。${S.sacName === c.name ? '那一道天雷，本该落在你身上。' : '后山的风，此后都有些冷。'}</p></div></div></div>`;
     const canWed = !c.partner && c.fav >= 100 && S.lv >= 9;
     const armed = Date.now() - hermitArm < 3000 && hermitCi === ci;
     const okH = c.fav >= 100 && realm() >= 2;
-    return `<div class="mc"><div class="mc-top"><div class="pt">${figSvg(c.look, 'cc' + ci, true)}</div>
+    return `<div class="mc"><div class="mc-top"><div class="pt">${compBust(c, 'cc' + ci)}</div>
       <div class="mc-info"><div class="top"><span class="mc-name">${esc(c.name)}</span><span class="chip ${c.partner ? 'rose' : ''}">${c.partner ? '道侣' : '知己'}</span></div>
         <p class="note">${c.orig} · ${c.trait} · ${LEVELS[c.lv].name}</p>
         <div class="meter"><div class="lab"><span>情谊</span><b>${c.fav} / 100</b></div><div class="bar fav"><i style="width:${c.fav}%"></i></div></div></div></div>

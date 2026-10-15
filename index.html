@@ -186,6 +186,14 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .sum .rank{font-family:var(--f-display);font-size:26px;line-height:1.1;color:var(--gold)}
 .comp-name{font-family:var(--f-display);font-size:30px;line-height:1.1;color:var(--rose)}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.sks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sk{display:grid;grid-template-columns:8.6em minmax(0,1fr);gap:8px;font-size:13px;padding:6px 10px;border-radius:6px;background:var(--panel-2)}
+.sk b{font-weight:600;white-space:nowrap}
+.sk span{color:var(--muted)}
+.sk.on b{color:var(--gold)}
+.sk.on span{color:var(--fg)}
+.sk.used b{color:var(--muted);text-decoration:line-through}
+.sk.off{opacity:.55}
 
 .log{grid-area:log;display:flex;flex-direction:column;gap:8px;min-height:180px}
 .log h2{margin:0;font-size:13px;letter-spacing:.2em;color:var(--muted);font-weight:600}
@@ -218,6 +226,9 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .end b{font-family:var(--f-display);font-weight:400;font-size:22px;color:var(--gold);line-height:1.2}
 .end span{font-size:12px;color:var(--muted)}
 .end.locked b{color:var(--muted)}
+/* 奇遇插画：弹窗顶部通栏；奇遇录里是小图 */
+.qy-art{display:block;width:calc(100% + 48px);max-width:none;margin:-24px -24px 0;aspect-ratio:3/2;object-fit:cover;border-radius:12px 12px 0 0;background:var(--panel-2)}
+.end .qy-thumb{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:6px;margin-bottom:6px;background:var(--panel)}
 .seal-end{align-self:flex-start;font-family:var(--f-display);color:var(--seal-fg);background:var(--cinnabar);padding:2px 10px;border-radius:4px;font-size:15px;letter-spacing:.1em}
 
 .trib{position:fixed;inset:0;z-index:30;background:var(--ink);display:grid;place-items:center;overflow:hidden}
@@ -248,6 +259,8 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
     <div class="head-r">
       <span id="h-reinc">第一世</span>
       <button class="btn sm" id="b-sex" type="button" title="切换人物形象">形象 · 男修</button>
+      <button class="btn sm" id="b-bgm" type="button" title="背景音乐开关">音乐 · 开</button>
+      <button class="btn sm gold" data-act="qiyu-book" id="b-qiyu" type="button">奇遇 0/10</button>
       <button class="btn sm gold" data-act="gallery" id="b-gallery" type="button">结局 0/10</button>
       <button class="btn sm red" id="b-reset" type="button">散功重修</button>
     </div>
@@ -496,6 +509,7 @@ function fresh(prev) {
     sect: { f: 0, contrib: 0, total: 0, rank: 0, left: false, free: false, elder: false, tasks: [], refM: 36, tourneyM: 60 },
     comps: [], pending: null, sex: prev ? prev.sex : 'm', sacName: '',
     tower: 0, zhanyi: 0, t: Date.now(),
+    qy: {}, qyTry: {}, flags: {}, path: '',
   };
 }
 let S = fresh(null);
@@ -507,7 +521,7 @@ try { endings = JSON.parse(localStorage.getItem(END_KEY) || '[]'); } catch (e) {
 const realm = () => LEVELS[S.lv].r;
 const root = () => ROOTS.find(r => r.id === S.root) || ROOTS[4];
 const req = lv => Math.round(40 * Math.pow(1.45, lv));
-const maxLifeY = () => REALMS[realm()].life + S.lifeY;
+const maxLifeY = () => Math.round(REALMS[realm()].life * (S.path === 'ti' ? 1.2 : 1)) + S.lifeY;
 const ageY = () => Math.floor(S.ageM / 12);
 /* 道侣：可有多位。元婴可结两位，合体可结三位 */
 const alive = () => S.comps.filter(c => c.alive);
@@ -522,13 +536,55 @@ function rate(noBuff) {
   if (!noBuff) r *= (S.injT > 0 ? .5 : 1) * (S.tideT > 0 ? 2 : 1);
   return r;
 }
-const gongfaName = l => GONGFA[Math.min(l, GONGFA.length - 1)] + (l >= GONGFA.length ? ' · 第' + cn(l - GONGFA.length + 2) + '重' : '');
+/* ---------- 流派：筑基后择道，每世重选 ---------- */
+const PATHS = {
+  jian: { n: '剑修', tag: '杀伐', d: '战力 ×1.35；法宝的战力加成提高五成；渡劫天雷伤害 −10%。',
+    gf: ['粗浅吐纳术', '基础剑诀', '青萍剑诀', '流云剑意', '太白剑经', '玄天剑典', '万剑归宗', '斩情剑道', '太乙分光剑', '诛仙剑经', '大罗剑道', '剑道真解'] },
+  dan: { n: '丹修', tag: '养生', d: '炼丹耗材 −40%；聚气丹药力翻倍，延寿丹多五成寿元且每境可服五枚，破境丹 +45%，渡厄丹护体 +60；历练采药 ×1.5。',
+    gf: ['粗浅吐纳术', '青木长生诀', '丹心诀', '炉鼎真解', '五炁朝元诀', '紫府药王经', '太乙丹经', '九转金丹诀', '太上丹经', '先天一炁诀', '大罗丹典', '混元丹道'] },
+  ti: { n: '体修', tag: '证身', d: '渡劫护体 ×1.5；寿元 +20%；伤势好得快一倍，负伤时战力只打八五折；斗法落败绝不陨落。',
+    gf: ['粗浅吐纳术', '锻体诀', '铜皮铁骨诀', '金刚不坏功', '龙象般若功', '不灭金身诀', '九转玄功', '混元战体', '八九玄功', '万劫不灭体', '盘古不灭体', '混元道体'] },
+};
+const isPath = p => S.path === p;
+const gongfaName = l => { const G = S.path ? PATHS[S.path].gf : GONGFA;
+  return G[Math.min(l, G.length - 1)] + (l >= G.length ? ' · 第' + cn(l - G.length + 2) + '重' : ''); };
 const fabaoName = l => FABAO[Math.min(l, FABAO.length - 1)] + (l >= FABAO.length ? ' +' + (l - FABAO.length + 1) : '');
+/* 聚灵阵：每阶一个阵名 */
+const ARRAYS = ['', '小聚灵阵', '五行聚灵阵', '九宫聚灵阵', '七星引灵阵', '两仪微尘阵', '四象聚元阵', '八卦归墟阵', '周天星斗大阵', '九曲黄河阵', '先天八卦阵', '混元一气阵', '鸿蒙聚灵大阵'];
+const arrayName = l => l ? ARRAYS[Math.min(l, ARRAYS.length - 1)] + (l >= ARRAYS.length ? ' +' + (l - ARRAYS.length + 1) : '') : '';
+/* 法宝神通：本命法宝每晋一阶继承一项，之前的神通全部保留。下标即法宝阶数 */
+const FB_SK = [null,
+  { n: '辟邪', d: '心魔来袭时更易抵御（+15%）' },
+  { n: '锋锐', d: '历练斗法得胜，灵石 +30%' },
+  { n: '厚重', d: '负伤时战力只打八五折（原为七折）' },
+  { n: '引雷', d: '渡劫天雷伤害 −10%' },
+  { n: '冰心', d: '心魔增长 −30%' },
+  { n: '剑阵', d: '登镇妖塔战力 ×1.15' },
+  { n: '斩灵', d: '镇妖塔妖王层灵石翻倍' },
+  { n: '镇压', d: '镇压心魔成功率 +20%' },
+  { n: '护主', d: '每世一次：身死之时钟碎护主，免去一死' },
+  { n: '杀伐', d: '一切斗法战力 ×1.2' },
+  { n: '阴阳', d: '突破失败不损修为' },
+  { n: '开天', d: '鸿蒙道劫天雷伤害 −20%' },
+];
+const sk = i => S.fabao >= i;
+const fabaoMul = () => 1 + (isPath('jian') ? .225 : .15) * S.fabao;
+const injMul = () => S.injT > 0 ? (isPath('ti') || sk(3) ? .85 : .7) : 1;
+/* 混沌钟·护主：每世一次免死。返回 true 表示这一死被挡下了 */
+function bell(why) {
+  if (!sk(9) || S.flags.bell) return false;
+  S.flags.bell = true;
+  log({ age: '寿元将尽之际，混沌钟长鸣一声，定住了光阴。钟身裂开一道缝，你多出六十年寿元。',
+    fall: '生死一线，混沌钟自行飞出，替你挡下了致命一击，钟身碎作两半。',
+    trib: '护体崩碎的刹那，混沌钟罩住了你，替你扛下这道天雷，随后寸寸碎裂。',
+    qi: '真元逆流之际，混沌钟当头罩下，钟声震散了心魔，钟身也就此碎裂。' }[why], 'gold');
+  return true;
+}
 const costGongfa = () => Math.round(25 * Math.pow(1.85, S.gongfa));
 const costArray = () => Math.round(40 * Math.pow(1.95, S.array));
 const costFabao = () => Math.round(35 * Math.pow(2.0, S.fabao));
 const nextMajor = () => S.lv < TOP && LEVELS[S.lv + 1].r !== realm();
-const power = () => (S.lv + 1) * (1 + .15 * S.fabao) * (1 + .1 * partners().length) * (S.injT > 0 ? .7 : 1);
+const power = () => (S.lv + 1) * fabaoMul() * (1 + .1 * partners().length) * injMul() * (isPath('jian') ? 1.35 : 1) * (sk(10) ? 1.2 : 1);
 const odds = (P, E) => clamp(P * P / (P * P + E * E), .05, .97);
 /* 战力：把内部的斗法强度 ×100 显示给玩家 */
 const pwr = () => Math.round(power() * 100);
@@ -538,7 +594,7 @@ function chance() {
   if (LEVELS[S.lv].trib) return 0;
   if (!nextMajor()) return .92 - .02 * realm();
   const R = REALMS[realm() + 1];
-  return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? .35 : 0) + (partners().length ? .03 + .02 * partners().length : 0) - S.mo / 1000, .05, .95);
+  return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? (isPath('dan') ? .45 : .35) : 0) + (partners().length ? .03 + .02 * partners().length : 0) - S.mo / 1000, .05, .95);
 }
 
 let capture = null;
@@ -548,7 +604,7 @@ function log(t, k = '') {
   if (S.log.length > 80) S.log.length = 80;
   logDirty = true;
 }
-function addMo(n) { S.mo = clamp(S.mo + n, 0, 100); }
+function addMo(n) { S.mo = clamp(S.mo + (n > 0 && sk(5) ? n * .7 : n), 0, 100); }
 
 /* ---------- 修炼 ---------- */
 function gainXp(n) { S.xp = Math.min(req(S.lv), S.xp + n); }
@@ -562,11 +618,12 @@ function tick(sec) {
   S.ageM += dt;
   gainXp(rate() * dt);
   S.stones += stipend() * dt;
-  if (S.injT > 0 && (S.injT -= dt) <= 0) { S.injT = 0; log('伤势痊愈，经脉通畅。', 'good'); }
+  if (S.injT > 0 && (S.injT -= dt * (isPath('ti') ? 2 : 1)) <= 0) { S.injT = 0; log('伤势痊愈，经脉通畅。', 'good'); }
   if (S.tideT > 0 && (S.tideT -= dt) <= 0) { S.tideT = 0; log('灵气潮汐退去。'); }
   monthly(dt);
   if ((S.evCD -= dt) <= 0) { act('', worldEvent); S.evCD = rnd(45, 95); }
   if (S.mo >= 100 && !S.pending) S.pending = { id: 'xinmo' };
+  if (!S.path && realm() >= 1 && !S.pending) S.pending = { id: 'path' };
   checkLife();
   if (S.pending) showModal();
 }
@@ -590,6 +647,7 @@ function checkLife() {
   if (S.over) return;
   const left = maxLifeY() - S.ageM / 12;
   if (left <= 0) {
+    if (bell('age')) { S.lifeY += 60; return; }
     log(`寿元耗尽，${S.name}于洞府中坐化，享年 ${ageY()} 岁。`, 'bad');
     return endGame('age');
   }
@@ -612,7 +670,7 @@ function worldEvent() {
   if (roll < .22) { S.tideT = 20; log('天地灵气潮汐涌动，二十个月内修炼速度翻倍。', 'good'); }
   else if (roll < .4) { const x = rate(true) * 15; gainXp(x); log(`静坐中偶有顿悟，修为精进 ${fmt(x)}。`, 'good'); }
   else if (roll < .64) {
-    const resist = clamp(.45 + .1 * S.reinc + (p ? .15 : 0) - S.mo / 250, .1, .95);
+    const resist = clamp(.45 + .1 * S.reinc + (p ? .15 : 0) + (sk(1) ? .15 : 0) - S.mo / 250, .1, .95);
     if (Math.random() < resist) { addMo(-5); log('心魔来袭，幻象丛生。你道心坚定，将其一剑斩灭。', 'good'); }
     else { S.xp *= .9; addMo(15); log('心魔侵扰，气血翻涌，修为折损一成，心魔又深了几分。', 'bad'); }
   }
@@ -651,21 +709,29 @@ function breakthrough() {
     }
     promote();
   } else if (major) {
-    S.xp *= .5; S.injT = Math.max(S.injT, 45); addMo(10);
-    log(`冲击${REALMS[realm() + 1].n}失败，经脉受创，修为跌落一半。`, 'bad');
+    /* 太极图·阴阳：突破失败不损修为 */
+    if (!sk(11)) S.xp *= .5;
+    S.injT = Math.max(S.injT, 45); addMo(10);
+    log(`冲击${REALMS[realm() + 1].n}失败，经脉受创${sk(11) ? '。太极图流转，修为分毫未损' : '，修为跌落一半'}。`, 'bad');
     ripple(1.4, 'red');
   } else {
-    S.xp *= .8;
-    log(`${from}瓶颈未破，修为折损两成。`, 'bad');
+    if (!sk(11)) S.xp *= .8;
+    log(`${from}瓶颈未破${sk(11) ? '，太极图流转，修为分毫未损' : '，修为折损两成'}。`, 'bad');
     ripple(1, 'red');
   }
+  /* 筑基功成，择道 */
+  if (major && S.lv >= 1 && !S.path && !S.pending) S.pending = { id: 'path' };
+  /* 一举证得道祖，放一遍《山巅决》 */
+  if (major && S.lv === TOP) sting('peak');
   save();
 }
 
 /* 斗法失利：若旧伤未愈，有陨落之危 */
 function defeat(place, mon, head) {
-  if (S.injT > 0 && Math.random() < .2) {
+  /* 体修肉身强横，斗法落败绝不陨落；混沌钟可护主一次 */
+  if (S.injT > 0 && !isPath('ti') && Math.random() < .2) {
     log(head + `旧伤未愈，又遭${mon}重创……`, 'bad');
+    if (bell('fall')) { S.injT = Math.max(S.injT, 90); return false; }
     endGame('fall', { place, mon });
     return true;
   }
@@ -689,7 +755,7 @@ function trip(i) {
     S.gongfa++;
     log(head + `于一块残碑上参悟古法，功法精进至《${gongfaName(S.gongfa)}》！`, 'gold');
   } else if (r < 30) {
-    const h = ri(1, 3) * (L.t + 1);
+    const h = Math.round(ri(1, 3) * (L.t + 1) * (isPath('dan') ? 1.5 : 1));
     S.herbs += h;
     log(head + pick(['于崖壁间', '在溪涧旁', '在一处妖兽巢穴外', '于古树根下']) + `采得灵草 ${h} 株。`, 'good');
   } else if (r < 48) {
@@ -699,7 +765,7 @@ function trip(i) {
   } else if (r < 76) {
     const mon = pick(L.mons);
     if (Math.random() < winChance(L)) {
-      const s = Math.round(base * rnd(1.2, 2)), h = ri(0, 2) * (L.t + 1);
+      const s = Math.round(base * rnd(1.2, 2) * (sk(2) ? 1.3 : 1)), h = Math.round(ri(0, 2) * (L.t + 1) * (isPath('dan') ? 1.5 : 1));
       S.stones += s; S.herbs += h; gainXp(req(S.lv) * .05);
       log(head + `遭遇${mon}，激战一场将其斩杀，得灵石 ${fmt(s)}${h ? '、灵草 ' + h + ' 株' : ''}。`, 'good');
     } else {
@@ -718,7 +784,7 @@ function trip(i) {
   } else {
     log(head + '一路平静，无所斩获，权当散心。');
   }
-  maybeMeet(L.n, .12);
+  if (!maybeQiyu(i)) maybeMeet(L.n, .12);
   checkLife();
   save();
 }
@@ -1114,6 +1180,27 @@ const EVENTS = {
       else log(`你接下玉旨，入天庭为天兵。${bonus ? `下界功绩折算贡献 ${fmt(bonus)}。` : ''}`, 'gold');
     },
   },
+  path: {
+    view: () => ({ t: '择道', cls: '',
+      body: `<p>筑基功成，传功长老召你入殿：「修行至此，当择一道而行。剑修杀伐，丹修养生，体修证身。你欲何往？」</p>
+        <p class="m">此后功法改修该派传承，修为重数不变。每一世可以重新择道。</p>`,
+      opts: Object.values(PATHS).map(P => [`${P.n} · ${P.tag}`, P.d]) }),
+    pick(ev, i) {
+      S.path = Object.keys(PATHS)[i];
+      const P = PATHS[S.path];
+      log(`你择了${P.n}一道。传功长老点点头，将一卷《${gongfaName(S.gongfa)}》交到你手里。`, 'gold');
+    },
+  },
+  qiyu: {
+    view: ev => { const Q = QIYU[ev.q], v = Q.view();
+      return { t: Q.n, cls: '', art: qyArt(Q), body: `<p class="m">奇遇 · ${Q.where}</p>${v.body}`, opts: v.opts }; },
+    pick(ev, i) {
+      const Q = QIYU[ev.q];
+      S.qy[Q.id] = true;
+      if (!qiyuBook.includes(Q.id)) { qiyuBook.push(Q.id); try { localStorage.setItem(QY_KEY, JSON.stringify(qiyuBook)); } catch (e) {} }
+      Q.pick(i);
+    },
+  },
   xinmo: {
     view: () => { const p = xinmoOdds(); return { t: '心魔劫', cls: 'red',
       body: `<p>心魔积重难返。识海之中，另一个你冷笑着开口：「长生大道，何须束手束脚？」</p>`,
@@ -1123,11 +1210,141 @@ const EVENTS = {
       if (Math.random() < xinmoOdds()) {
         S.mo = 40; S.xp *= .7;
         log(`${partner() ? pNames() + '在旁护法，' : ''}你苦守灵台七日，终将心魔镇压，修为折损三成。`, 'gold');
-      } else { log('镇压心魔失败，真元逆流……', 'bad'); endGame('qi'); }
+      } else {
+        log('镇压心魔失败，真元逆流……', 'bad');
+        if (bell('qi')) { S.mo = 40; S.injT = Math.max(S.injT, 60); return; }
+        endGame('qi');
+      }
     },
   },
 };
-const xinmoOdds = () => clamp(.5 + .08 * S.reinc + (partner() ? .15 : 0), .3, .9);
+const xinmoOdds = () => clamp(.5 + .08 * S.reinc + (partner() ? .15 : 0) + (sk(8) ? .2 : 0), .3, .95);
+
+/* ---------- 奇遇 ---------- */
+/* 九处历练地与镇妖塔各有一桩奇遇，每世各遇一次；去得越多越容易撞见。奇遇录跨轮回保留 */
+const QY_KEY = 'wendao-qiyu';
+let qiyuBook = [];
+try { qiyuBook = JSON.parse(localStorage.getItem(QY_KEY) || '[]'); } catch (e) {}
+const SB = () => 12 * Math.pow(2.4, realm());
+const pctOf = w => Math.round(w * 100) + '%';
+const QIYU = [
+  { loc: 0, id: 'yaonong', n: '山中药农',
+    view: () => ({ body: '<p>山道旁倒着一位白发药农，竹篓翻在一边，几株灵草散落在地。老人气息微弱，嘴里念叨着要回家。</p>',
+      opts: [['背他下山', '耗时三月'], ['拾起灵草离开', '灵草归你']] }),
+    pick(i) {
+      if (i === 0) {
+        S.ageM += 3; S.lifeY += 10; gainXp(req(S.lv) * .5); addMo(-10);
+        log('你背着老人走了三个月山路。到了山脚，老人直起腰来，竟是宗门早已隐退的药堂长老。「心性不错。」他塞给你一枚养元丹，飘然而去。寿元 +10 年，修为大进。', 'gold');
+      } else {
+        const h = 6 * (1 + realm()); S.herbs += h; addMo(10);
+        log(`你拾起 ${h} 株灵草转身离开。多年后才听说，那位老人是隐退的药堂长老，专在山道上试人心性。`, 'bad');
+      }
+    } },
+  { loc: 1, id: 'mofu', n: '魔修遗府',
+    view: () => ({ body: '<p>阴风散尽处露出一座石府。府中白骨盘坐，膝上摊着一卷血色功法，字迹还在缓缓蠕动。扉页写着八个字：以血养气，一日千里。</p>',
+      opts: [['修炼血色功法', '功法连进两重，心魔 +35'], ['一把火烧了它', '心魔 −15'],
+        S.sect.left ? ['卖给黑市', '换一大笔灵石，心魔 +5'] : ['上交宗门', '执法堂记功，得贡献']] }),
+    pick(i) {
+      if (i === 0) { S.gongfa += 2; addMo(35); log(`你照着血色功法运转周天，修为一日千里，心底却多了一道冷笑声。功法精进至《${gongfaName(S.gongfa)}》。`, 'bad'); }
+      else if (i === 1) { addMo(-15); gainXp(req(S.lv) * .1); log('你烧了血色功法，火光里仿佛有人惨叫。心境反倒澄明了几分。', 'good'); }
+      else if (S.sect.left) { const s = Math.round(SB() * 3); S.stones += s; addMo(5); log(`你把血色功法卖给了黑市商人，换得灵石 ${fmt(s)}。`); }
+      else { const g = Math.round(40 * Math.pow(1.8, realm())); S.sect.contrib += g; S.sect.total += g; promote(); log(`你将血色功法上交宗门，执法堂记你一功，贡献 +${fmt(g)}。`, 'gold'); }
+    } },
+  { loc: 2, id: 'linglu', n: '林中灵鹿',
+    view: () => ({ body: '<p>林中一头通体雪白的幼鹿被捕兽夹夹住了后腿，鹿角上隐有灵光，是快要开智的灵鹿。远处传来猎妖人的脚步声。</p>',
+      opts: [['放它走', '结一段善缘'], ['取它的妖丹', '灵鹿妖丹价值不菲，心魔 +15']] }),
+    pick(i) {
+      if (i === 0) { S.flags.lu = true; addMo(-10); log('你掰开捕兽夹。灵鹿回头看了你一眼，消失在林深处。', 'rose'); }
+      else { const s = Math.round(SB() * 4); S.stones += s; addMo(15); log(`你取了灵鹿的妖丹，卖得灵石 ${fmt(s)}。那双眼睛，你后来在梦里见过几次。`, 'bad'); }
+    } },
+  { loc: 3, id: 'haishi', n: '雾中海市',
+    view: () => { const y = Math.round(maxLifeY() * .12), c = Math.round(SB() * 6);
+      return { body: '<p>海上起了大雾，雾中浮出一座海市，街上的行人都没有影子。一位戴斗笠的摊主冲你招手：「客官，一门上古功法，只收你一点寿元。」</p>',
+        opts: [['以寿元换', `寿元 −${y} 年，功法连进两重`], ['以灵石换', `灵石 −${fmt(c)}${S.stones < c ? '（不够）' : ''}，功法精进一重`], ['转身离开', '看破虚妄，心魔 −5']] }; },
+    pick(i) {
+      const y = Math.round(maxLifeY() * .12), c = Math.round(SB() * 6);
+      if (i === 0) { S.lifeY -= y; S.gongfa += 2; log(`摊主从你眉心抽出一缕白气，收进葫芦里。你得了一卷古法，功法精进至《${gongfaName(S.gongfa)}》，寿元 −${y} 年。`, 'gold'); }
+      else if (i === 1) {
+        if (S.stones < c) { log('摊主掂了掂你的储物袋，摇摇头，连人带摊子散进了雾里。'); return; }
+        S.stones -= c; S.gongfa++; log(`你付了灵石，得了一卷古法，功法精进至《${gongfaName(S.gongfa)}》。`, 'good');
+      } else { addMo(-5); gainXp(req(S.lv) * .15); log('你转身离开，身后的海市在雾中无声散去。', 'good'); }
+    } },
+  { loc: 4, id: 'canhun', n: '剑仙残魂',
+    view: () => ({ body: '<p>古墟深处，一缕残魂飘在断碑上，自称上古剑仙。「吾道统将绝，你可愿承我衣钵？」它打量你肉身的眼神，让你有些发毛。</p>',
+      opts: [['跪受传承', '天大的机缘，也可能是陷阱'], ['拔剑斩之', `残魂战力约 ${fmt(shown(taskFoe(1.15)))}，胜算 ${pctOf(taskWin(1.15))}`], ['焚香拜别', '不贪不惧']] }),
+    pick(i) {
+      if (i === 0) {
+        if (Math.random() < .65 + .05 * S.reinc) { gainXp(req(S.lv)); S.fabao++; log(`残魂化作一道剑光没入你眉心。你得了剑仙毕生感悟，修为圆满，法宝精进为${fabaoName(S.fabao)}。`, 'gold'); }
+        else { S.xp *= .7; S.injT = Math.max(S.injT, 60); addMo(30); log('残魂猛地扑进你的识海，竟想夺舍！你拼死守住灵台将它磨灭，自己也伤了根本。', 'bad'); }
+      } else if (i === 1) {
+        if (Math.random() < taskWin(1.15)) { const s = Math.round(SB() * 5); S.stones += s; S.fabao++; log(`你一剑斩散残魂，从断碑下挖出一柄古剑与灵石 ${fmt(s)}。法宝精进为${fabaoName(S.fabao)}。`, 'gold'); }
+        else { if (defeat('葬仙古墟', '剑仙残魂', '')) return; log('你的剑穿过了残魂，残魂的剑却没有落空。你负伤遁走。', 'bad'); }
+      } else { S.lifeY += 20; addMo(-10); log('你焚香三拜。残魂沉默良久，笑道：「也罢。」消散前在你眉心一点，你的寿元多了二十年。', 'rose'); }
+    } },
+  { loc: 5, id: 'zhaoxin', n: '照心古镜',
+    view: () => ({ body: '<p>裂隙边缘立着一面古镜。镜中的你没有跟着你动，而是冲你咧嘴一笑。</p>',
+      opts: [['直面镜中人', S.mo < 50 ? `你的心魔尚浅（${Math.round(S.mo)}），或可一劳永逸` : `你心魔已深（${Math.round(S.mo)}），此时直面凶险万分`], ['打碎古镜', '镜片可炼入法宝，心魔 +10']] }),
+    pick(i) {
+      if (i === 0) {
+        if (Math.random() < (S.mo < 50 ? .8 : .35)) { S.mo = 0; gainXp(req(S.lv) * .5); log('你与镜中人对坐三日。最后它叹了口气，化作你的影子。心魔尽消。', 'gold'); }
+        else { addMo(25); S.injT = Math.max(S.injT, 60); log('镜中人从镜里伸出手，掐住了你的喉咙。你挣脱出来时，已满身是血。', 'bad'); }
+      } else { S.fabao++; addMo(10); log(`你一拳打碎古镜，将镜片炼入法宝，得${fabaoName(S.fabao)}。碎片里的那张脸，似乎还在笑。`, 'good'); }
+    } },
+  { loc: 6, id: 'zhexian', n: '谪仙的信',
+    view: () => ({ body: '<p>罡风中蜷着一位衣衫褴褛的谪仙，仙骨已碎了大半。他递来一封信：「烦请交给瑶池畔的一位故人。我被贬下界那天，没来得及跟她道别。」</p>',
+      opts: [['替他送信', '耗时半年'], ['押他去天庭领赏', '私逃的谪仙，天庭有悬赏，心魔 +15']] }),
+    pick(i) {
+      if (i === 0) {
+        S.ageM += 6; addMo(-10); S.lifeY += 300; const h = 10 * (1 + realm()); S.herbs += h;
+        log(`你把信送到瑶池畔。收信的仙子读完，哭了很久，后来托人送来一枚蟠桃和 ${h} 株仙草。寿元 +300 年。`, 'rose');
+      } else if (S.sect.f && !S.sect.left) {
+        const g = Math.round(40 * Math.pow(1.8, realm())); S.sect.contrib += g; S.sect.total += g; addMo(15); promote();
+        log(`你押着谪仙去了南天门，天庭记你一功，贡献 +${fmt(g)}。他一路上没再看你一眼。`, 'bad');
+      } else { const s = Math.round(SB() * 5); S.stones += s; addMo(15); log(`你押着谪仙去了南天门，领到赏钱灵石 ${fmt(s)}。他一路上没再看你一眼。`, 'bad'); }
+    } },
+  { loc: 7, id: 'zhanhun', n: '不散战魂',
+    view: () => ({ body: '<p>天河边，一具披甲的骸骨拄着长戟，在这里站了上万年。你走近时，它缓缓抬头：「来者，可敢与吾一战？败了，吾便能安息。」</p>',
+      opts: [['应战', `战魂战力约 ${fmt(shown(taskFoe(1.2)))}，胜算 ${pctOf(taskWin(1.2))}`], ['为它超度', '心魔 −20，修为小进']] }),
+    pick(i) {
+      if (i === 0) {
+        if (Math.random() < taskWin(1.2)) { S.fabao += 2; log(`你接下九十九戟，终于一剑破甲。战魂大笑着散去，留下那杆随它征战万年的长戟。法宝连升两阶，得${fabaoName(S.fabao)}。`, 'gold'); }
+        else { if (defeat('天河古战场', '不散战魂', '')) return; log('长戟扫来，你倒飞出去，在天河里漂了三天才爬上岸。', 'bad'); }
+      } else { addMo(-20); gainXp(req(S.lv) * .3); log('你为战魂念了七日往生咒。最后一日，长戟倒下，骸骨化作了沙。', 'good'); }
+    } },
+  { loc: 8, id: 'hongmeng', n: '一缕鸿蒙',
+    view: () => ({ body: '<p>混沌海翻涌，一缕紫气从深处浮起，所过之处，混沌都退开了。传说道祖证道，凭的就是这样一缕鸿蒙紫气。</p>',
+      opts: [['纳入体内', '成则道劫天雷减弱，败则重伤'], ['静观其变', '观摩紫气流转，修为精进']] }),
+    pick(i) {
+      if (i === 0) {
+        if (Math.random() < .5 + .05 * S.reinc) { S.flags.hm = true; gainXp(req(S.lv)); log('紫气没入丹田，与你的道基缠作一处。修为圆满，日后引动鸿蒙道劫，天雷会弱上几分。', 'gold'); }
+        else { S.xp *= .6; S.injT = Math.max(S.injT, 90); log('紫气入体的一瞬，你的经脉寸寸崩裂。它在你体内转了一圈，又飘回了混沌海。', 'bad'); }
+      } else { gainXp(req(S.lv) * .4); log('你看着紫气在混沌中流转了九九八十一日，若有所悟。', 'good'); }
+    } },
+  { loc: 'tower', id: 'taling', n: '提灯塔灵', need: () => S.tower >= 10,
+    view: () => ({ body: '<p>你刚踏上新的一层，塔中忽然安静下来。一个提灯的童子坐在台阶上看你：「我守这座塔三千年了，你是头一个走到这里还有力气喘气的。陪我下盘棋吧？」</p>',
+      opts: [['陪塔灵下棋', '赢了或有好处'], ['问它塔中往事', '听个故事']] }),
+    pick(i) {
+      if (i === 0) {
+        if (Math.random() < .55) {
+          S.tower += 3; S.zhanyi = 1;
+          if (S.tower > towerBest) { towerBest = S.tower; try { localStorage.setItem(TOWER_KEY, String(towerBest)); } catch (e) {} }
+          log(`你赢了半子。塔灵撇撇嘴，挥手把你送上了三层，又塞给你一枚战意丹。如今在第 ${S.tower} 层。`, 'gold');
+        } else { gainXp(req(S.lv) * .2); log('你输了。塔灵很高兴，请你喝了一壶灵茶。', 'good'); }
+      } else { gainXp(req(S.lv) * .25); addMo(-5); log('塔灵说，这座塔镇的从来不是妖，是当年建塔之人的心魔。每上一层，都是在替他赎一份罪。', 'good'); }
+    } },
+];
+QIYU.forEach(Q => { Q.where = Q.loc === 'tower' ? '镇妖塔' : LOCS[Q.loc].n; });
+const qyArt = Q => `img/qy/qy_${Q.id}.jpg`;
+function maybeQiyu(key) {
+  if (S.over || S.pending) return false;
+  const q = QIYU.findIndex(x => x.loc === key), Q = QIYU[q];
+  if (!Q || S.qy[Q.id] || (Q.need && !Q.need())) return false;
+  const t = S.qyTry[Q.id] = (S.qyTry[Q.id] || 0) + 1;
+  if (Math.random() > Math.min(.35, .05 + .03 * t)) return false;
+  S.pending = { id: 'qiyu', q };
+  return true;
+}
+const qyChip = key => { const Q = QIYU.find(x => x.loc === key); return Q && S.qy[Q.id] ? '<span class="chip gold">奇遇已得</span>' : ''; };
 
 /* ---------- 即时反馈 ---------- */
 function snap() {
@@ -1158,7 +1375,7 @@ function deltas(a, b) {
   num(Math.round(b.mo - a.mo), '心魔', '', true, String);
   num(b.life - a.life, '寿元', ' 年', false, String);
   if (b.gf > a.gf) o.push({ t: `功法《${gongfaName(b.gf)}》`, c: 'gold' });
-  if (b.ar > a.ar) o.push({ t: `聚灵阵 ${cn(b.ar)}阶`, c: 'gold' });
+  if (b.ar > a.ar) o.push({ t: arrayName(b.ar), c: 'gold' });
   if (b.fa > a.fa) o.push({ t: `法宝 ${fabaoName(b.fa)}`, c: 'gold' });
   num(b.pw - a.pw, '战力');
   if (b.bp > a.bp) o.push({ t: `${b.bpn} +1`, c: 'gold' });
@@ -1225,33 +1442,41 @@ function upgrade(kind) {
   if (S.stones < c) return;
   S.stones -= c; S[kind]++;
   if (kind === 'gongfa') log(`闭关参悟，功法精进至《${gongfaName(S.gongfa)}》。`, 'good');
-  if (kind === 'array') log(`耗费灵石布下${cn(S.array)}阶聚灵阵，洞府灵气更浓。`, 'good');
-  if (kind === 'fabao') log(`祭炼法宝，得${fabaoName(S.fabao)}。`, 'good');
+  if (kind === 'array') log(`耗费灵石布下${arrayName(S.array)}，洞府灵气更浓。`, 'good');
+  if (kind === 'fabao') {
+    const k = FB_SK[S.fabao];
+    log(`祭炼法宝，得${fabaoName(S.fabao)}。${k ? `器灵苏醒，领悟神通「${k.n}」：${k.d}。` : ''}`, k ? 'gold' : 'good');
+  }
   save();
 }
 
+/* 丹修：耗材六折，药力更强 */
+const DAN = () => isPath('dan');
+const yanCap = () => DAN() ? 5 : 3;
+const duePer = () => DAN() ? 60 : 40;
 function pills() {
   const r = realm(), out = [];
-  out.push({ id: 'juqi', n: '聚气丹', d: `服下即得 ${fmt(rate(true) * 25)} 修为。`,
+  out.push({ id: 'juqi', n: '聚气丹', d: `服下即得 ${fmt(rate(true) * 25 * (DAN() ? 2 : 1))} 修为。`, x: rate(true) * 25 * (DAN() ? 2 : 1),
     h: 2, s: Math.round(6 * Math.pow(1.9, r)), ok: S.xp < req(S.lv), why: '修为已满' });
   out.push({ id: 'liao', n: '疗伤丹', d: '立刻治愈伤势，恢复修炼速度。负伤时斗法落败有陨落之危。',
     h: 1, s: Math.round(5 * Math.pow(1.7, r)), ok: S.injT > 0, why: '未曾负伤' });
   out.push({ id: 'qing', n: '清心丹', d: '心魔 −25。', h: 3 + r, s: Math.round(15 * Math.pow(2, r)), ok: S.mo > 0, why: '心境澄明' });
-  const ys = Math.max(15, Math.round(REALMS[r].life * .08));
-  out.push({ id: 'yan', n: '延寿丹', d: `增寿 ${ys} 年。丹毒累积，每一大境界至多服三枚（已服 ${S.yanshou}）。`,
-    h: 6 + 4 * r, s: Math.round(30 * Math.pow(2.4, r)), ok: S.yanshou < 3, why: '丹毒已满', ys });
+  const ys = Math.round(Math.max(15, Math.round(REALMS[r].life * .08)) * (DAN() ? 1.5 : 1));
+  out.push({ id: 'yan', n: '延寿丹', d: `增寿 ${ys} 年。丹毒累积，每一大境界至多服${cn(yanCap())}枚（已服 ${S.yanshou}）。`,
+    h: 6 + 4 * r, s: Math.round(30 * Math.pow(2.4, r)), ok: S.yanshou < yanCap(), why: '丹毒已满', ys });
   if (nextMajor() && !LEVELS[S.lv].trib) {
     const R = r + 1;
-    out.push({ id: 'po', n: REALMS[R].pill, d: `冲击${REALMS[R].n}时成功率 +35%，无论成败皆会耗去。`,
+    out.push({ id: 'po', n: REALMS[R].pill, d: `冲击${REALMS[R].n}时成功率 +${DAN() ? 45 : 35}%，无论成败皆会耗去。`,
       h: 3 + 3 * R, s: Math.round(40 * Math.pow(2.6, R - 1)), ok: !S.bpill, why: '已备好一枚' });
   }
   if (r >= 4) {
     const up = Math.max(0, r - 8);
-    out.push({ id: 'due', n: '渡厄丹', d: `渡天劫时护体 +40，渡劫后耗尽。至多备三枚（已备 ${S.duepill}）。`,
+    out.push({ id: 'due', n: '渡厄丹', d: `渡天劫时护体 +${duePer()}，渡劫后耗尽。至多备三枚（已备 ${S.duepill}）。`,
       h: 30 * (1 + up), s: Math.round(6000 * Math.pow(2.4, up)), ok: S.duepill < 3, why: '已备足' });
   }
   out.push({ id: 'zhan', n: '战意丹', d: '下一次挑战镇妖塔时战力 ×1.3，无论胜负皆会耗去。',
     h: 2 + r, s: Math.round(10 * Math.pow(1.9, r)), ok: !S.zhanyi, why: '已备好一枚' });
+  if (DAN()) out.forEach(p => { p.h = Math.max(1, Math.round(p.h * .6)); p.s = Math.max(1, Math.round(p.s * .6)); });
   return out;
 }
 
@@ -1260,7 +1485,7 @@ function brew(id) {
   const P = pills().find(p => p.id === id);
   if (!P || !P.ok || S.herbs < P.h || S.stones < P.s) return;
   S.herbs -= P.h; S.stones -= P.s;
-  if (id === 'juqi') { gainXp(rate(true) * 25); log('开炉炼成聚气丹，服下后丹田温热，修为精进。', 'good'); }
+  if (id === 'juqi') { gainXp(P.x); log('开炉炼成聚气丹，服下后丹田温热，修为精进。', 'good'); }
   if (id === 'liao') { S.injT = 0; log('服下疗伤丹，伤势尽复。', 'good'); }
   if (id === 'qing') { addMo(-25); log('服下清心丹，灵台一片清明。', 'good'); }
   if (id === 'yan') { S.lifeY += P.ys; S.yanshou++; S.warned = -1; log(`服下延寿丹，寿元增加 ${P.ys} 年。`, 'gold'); }
@@ -1279,12 +1504,12 @@ const TW_MONS = ['石精', '赤眼狼妖', '血蝠', '骷髅兵', '画皮狐妖'
 const TW_KINGS = ['黑山妖王', '白骨夫人', '九头虫', '金翅大鹏', '六耳魔猿', '赤炎魔龙', '九尾天狐', '饕餮', '混世魔王'];
 const towerFoe = f => .5 * Math.pow(f, 1.25) * (f % 10 ? 1 : 1.2);
 const towerMon = f => f % 10 ? TW_MONS[f * 7 % TW_MONS.length] : TW_KINGS[(f / 10 - 1) % TW_KINGS.length];
-const towerPow = () => power() * (S.zhanyi ? 1.3 : 1);
+const towerPow = () => power() * (S.zhanyi ? 1.3 : 1) * (sk(6) ? 1.15 : 1);
 /* 胜负比历练更看战力：强一成就稳一截 */
 const towerWin = f => { const a = Math.pow(towerPow(), 4), b = Math.pow(towerFoe(f), 4); return clamp(a / (a + b), .02, .98); };
 function towerLoot(f) {
   const r = realm(), o = { s: Math.round(8 * Math.pow(2.2, r) * (1 + f / 25)), h: f % 5 ? 0 : 2 * (1 + r), big: '' };
-  if (f % 10 === 0) { o.s *= 8; o.big = (f / 10) % 2 ? 'fabao' : 'gongfa'; }
+  if (f % 10 === 0) { o.s *= sk(7) ? 16 : 8; o.big = (f / 10) % 2 ? 'fabao' : 'gongfa'; }
   return o;
 }
 const bigName = k => k === 'fabao' ? '法宝精进一阶' : '功法精进一重';
@@ -1307,6 +1532,7 @@ function climb() {
     S.injT = Math.max(S.injT, 24);
     log(head + `不敌${mon}，被塔灵送出塔外，负伤二十四月。`, 'bad');
   }
+  maybeQiyu('tower');
   checkLife();
   save();
 }
@@ -1342,7 +1568,7 @@ function closedDoor(sec) {
   const age = Math.min((M - left) * OFF_AGE, Math.max(0, maxLifeY() * 12 - S.ageM - 24));
   S.ageM += age;
   S.stones += stipend() * M;
-  S.injT = Math.max(0, S.injT - M); S.tideT = Math.max(0, S.tideT - M);
+  S.injT = Math.max(0, S.injT - M * (isPath('ti') ? 2 : 1)); S.tideT = Math.max(0, S.tideT - M);
   const sc = S.sect;
   if (!sc.left) { sc.refM -= M; if (sc.refM <= 0) { genBoard(); sc.refM = 36; } sc.tourneyM -= M; }
   promote();
@@ -1361,20 +1587,26 @@ function awayHtml() {
 
 /* ---------- 天劫 ---------- */
 let trib = null;
-const tribHp = () => 100 + 6 * S.fabao + 40 * S.duepill + 30 * partners().length;
-const tribMul = () => (1 - Math.min(.55, .05 * S.fabao)) * (S.root === 'lei' ? .8 : 1) * (1 - Math.min(.15, .03 * S.reinc));
+/* 体修护体 ×1.5；剑修、紫电锤各减天雷一成；盘古幡再减道劫两成 */
+const tribHp = () => Math.round((100 + 6 * S.fabao + duePer() * S.duepill + 30 * partners().length + (S.flags.lu ? 30 : 0)) * (isPath('ti') ? 1.5 : 1));
+const tribMul = () => (1 - Math.min(.55, .05 * S.fabao)) * (S.root === 'lei' ? .8 : 1) * (1 - Math.min(.15, .03 * S.reinc))
+  * (isPath('jian') ? .9 : 1) * (sk(4) ? .9 : 1);
 /* 渡劫期引九九天劫飞升仙界；道祖引鸿蒙道劫，天雷威力 ×2.5 */
 const FIN_MUL = 2.5;
-const tribExpect = fin => Math.round(171 * tribMul() * (fin ? FIN_MUL : 1));
+/* 奇遇「一缕鸿蒙」：道劫天雷减弱两成半 */
+const finMul = () => FIN_MUL * (S.flags.hm ? .75 : 1) * (sk(12) ? .8 : 1);
+const tribExpect = fin => Math.round(171 * tribMul() * (fin ? finMul() : 1));
 
 function startTrib(fin) {
   const hp = tribHp();
-  trib = { k: 0, hp, max: hp, mul: tribMul() * (fin ? FIN_MUL : 1), fin };
+  trib = { k: 0, hp, max: hp, mul: tribMul() * (fin ? finMul() : 1), fin };
+  if (S.flags.lu) log('劫云下，一头雪白的灵鹿踏云而来，鹿角灵光化作护罩罩住了你。当年林中那一念，今日有了回响。护体 +30。', 'rose');
   S.duepill = 0;
   $('#trib').hidden = false;
   $('#trib-t').textContent = fin ? '鸿蒙道劫' : '九九天劫';
   const p = partner();
   $('#trib-n').textContent = p ? `劫云汇聚，${pNames()}在百丈外布阵护法……` : fin ? '诸天震动，鸿蒙紫气自混沌深处涌来……' : '劫云汇聚，方圆千里风云变色……';
+  bgm('trib');
   updTrib();
   sizeT();
   setTimeout(strike, 1800);
@@ -1389,7 +1621,12 @@ function strike() {
   trib.hp -= dmg;
   let txt = `第${cn(trib.k)}道天雷落下！护体 −${Math.round(dmg)}`, wait = 1300;
   const p = partners().sort((a, b) => b.fav - a.fav)[0];
-  if (trib.hp <= 0 && p && !S.sacrificed) {
+  /* 混沌钟先于道侣护主 */
+  if (trib.hp <= 0 && bell('trib')) {
+    trib.hp = trib.max * .35;
+    txt = `第${cn(trib.k)}道天雷落下，混沌钟当空罩住了你，替你扛下这一击，随即寸寸碎裂！`;
+    wait = 2600;
+  } else if (trib.hp <= 0 && p && !S.sacrificed) {
     p.alive = false; S.sacrificed = true; S.sacName = p.name;
     trib.hp = trib.max * .35;
     txt = `第${cn(trib.k)}道天雷落下，${p.name}飞身挡在你身前，替你承下了这一击！`;
@@ -1496,6 +1733,7 @@ function statsHtml() {
     <dt>道号</dt><dd>${esc(S.name)}</dd>
     <dt>灵根</dt><dd>${root().n} · ${S.els}</dd>
     <dt>境界</dt><dd>${LEVELS[S.lv].name}</dd>
+    <dt>道途</dt><dd>${S.path ? PATHS[S.path].n : '未择'}</dd>
     <dt>战力</dt><dd>${fmt(pwr())}</dd>
     <dt>享年</dt><dd>${ageY()} 岁</dd>
     <dt>${S.sect.f ? '仙界' : '宗门'}</dt><dd>${factionLabel(true)}</dd>
@@ -1512,6 +1750,17 @@ function showModal() {
       <div class="elist">${ENDINGS.map(E => {
         const got = endings.includes(E.id);
         return `<div class="end ${got ? '' : 'locked'}"><b>${got ? E.n : '？？？'}</b><span>${E.hint}</span></div>`;
+      }).join('')}</div>
+      <div class="row"><button class="btn" data-act="close" type="button">合上</button></div>`;
+    return;
+  }
+  if (ui === 'qiyu') {
+    m.hidden = false;
+    c.innerHTML = `<h2>奇遇录</h2>
+      <p class="m">已遇 ${qiyuBook.length} / ${QIYU.length}。九处历练地与镇妖塔各有一桩奇遇，去得越多越容易撞见，每世各遇一次。奇遇录跨轮回保留。</p>
+      <div class="elist">${QIYU.map(Q => {
+        const got = qiyuBook.includes(Q.id);
+        return `<div class="end ${got ? '' : 'locked'}">${got ? `<img class="qy-thumb" src="${qyArt(Q)}" alt="" loading="lazy">` : ''}<b>${got ? Q.n : '？？？'}</b><span>${Q.where}${got && S.qy[Q.id] ? ' · 此世已遇' : ''}</span></div>`;
       }).join('')}</div>
       <div class="row"><button class="btn" data-act="close" type="button">合上</button></div>`;
     return;
@@ -1561,7 +1810,7 @@ function showModal() {
   if (S.pending) {
     m.hidden = false;
     const v = EVENTS[S.pending.id].view(S.pending);
-    c.innerHTML = `<h2 class="${v.cls}">${v.t}</h2>${v.body}
+    c.innerHTML = `${v.art ? `<img class="qy-art" src="${v.art}" alt="">` : ''}<h2 class="${v.cls}">${v.t}</h2>${v.body}
       <div class="opts">${v.opts.map((o, i) => `<button class="btn" data-act="choose" data-i="${i}" type="button">${o[0]}<small>${o[1]}</small></button>`).join('')}</div>`;
     return;
   }
@@ -1590,7 +1839,8 @@ function renderStatus() {
   $('#s-herbs').textContent = fmt(S.herbs);
   $('#s-pow').textContent = fmt(pwr());
   const pk = partners().length;
-  $('#s-powd').textContent = `境界 ${(S.lv + 1) * 100}` + (S.fabao ? ` · 法宝 ×${(1 + .15 * S.fabao).toFixed(2)}` : '') + (pk ? ` · 道侣 ×${(1 + .1 * pk).toFixed(1)}` : '') + (S.injT > 0 ? ' · 负伤 ×0.7' : '');
+  $('#s-powd').textContent = `境界 ${(S.lv + 1) * 100}` + (S.fabao ? ` · 法宝 ×${fabaoMul().toFixed(2)}` : '') + (isPath('jian') ? ' · 剑修 ×1.35' : '') + (sk(10) ? ' · 诛仙 ×1.2' : '')
+    + (pk ? ` · 道侣 ×${(1 + .1 * pk).toFixed(1)}` : '') + (S.injT > 0 ? ` · 负伤 ×${injMul()}` : '');
   const chips = [], p = partner();
   if (S.injT > 0) chips.push(`<span class="chip red">负伤 ${Math.ceil(S.injT)} 月</span>`);
   if (S.tideT > 0) chips.push(`<span class="chip jade">灵潮 ${Math.ceil(S.tideT)} 月</span>`);
@@ -1604,7 +1854,8 @@ function renderStatus() {
     <dt>${S.sect.f ? '仙界' : '宗门'}</dt><dd>${factionLabel()}</dd>
     <dt>道侣</dt><dd>${alive().length ? alive().map(c => esc(c.name) + (c.partner ? '' : '（知己）')).join('、') : '无'}</dd>
     <dt>功法</dt><dd>${gongfaName(S.gongfa)}</dd>
-    <dt>聚灵阵</dt><dd>${S.array ? cn(S.array) + '阶' : '未布置'}</dd>
+    <dt>道途</dt><dd>${S.path ? PATHS[S.path].n : realm() >= 1 ? '待择' : '筑基后择道'}</dd>
+    <dt>聚灵阵</dt><dd>${S.array ? arrayName(S.array) : '未布置'}</dd>
     <dt>法宝</dt><dd>${fabaoName(S.fabao)}</dd>
     <dt>${S.sect.left ? '散修所得' : S.sect.f ? '天庭俸禄' : '宗门月俸'}</dt><dd>${fmt(stipend())} 灵石</dd>`);
   setHtml('#tab-sect', S.sect.f && S.sect.left ? '散仙' : F().tab);
@@ -1612,6 +1863,8 @@ function renderStatus() {
   $('#b-sex').textContent = `形象 · ${S.sex === 'f' ? '女修' : '男修'}`;
   setHtml('#fig', figHtml());
   $('#b-gallery').textContent = `结局 ${endings.length}/${ENDINGS.length}`;
+  $('#b-qiyu').textContent = `奇遇 ${qiyuBook.length}/${QIYU.length}`;
+  bgm(wantTrack());
 
   $('#c-realm').textContent = L.name;
   $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (S.tideT > 0 ? ' · 灵潮' : '') + (p ? ' · 双修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
@@ -1651,11 +1904,11 @@ function sideTrip() {
   return '<div class="list">' + LOCS.map((L, i) => {
     if (S.lv < L.rec) return `<div class="item locked"><h3>${L.n}</h3><p>需${LEVELS[L.rec].name.replace(/初期$/, '')}方可前往。</p></div>`;
     const w = winChance(L);
-    return `<div class="item"><h3>${L.n}${riskChip(w)}</h3>
+    return `<div class="item"><h3>${L.n}${riskChip(w)}${qyChip(i)}</h3>
       <div class="act"><button class="btn sm" data-act="go" data-i="${i}" type="button">前往</button></div>
       <div class="meta">耗时 ${2 + L.t}–${4 + L.t} 月 · 妖兽战力 ${fmt(shown(locFoe(L)))} · 胜算 ${Math.round(w * 100)}%</div>
       <p>${L.d}</p>${fbHtml('go:' + i)}</div>`;
-  }).join('') + `</div><p class="note" style="margin-top:10px">历练途中不得修炼，岁月照常流逝。${S.lv >= 2 && alive().length < compCap() ? '途中或有邂逅。' : ''}${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，此时斗法落败恐有陨落之危。</span>' : ''}</p>`;
+  }).join('') + `</div><p class="note" style="margin-top:10px">历练途中不得修炼，岁月照常流逝。每处另有一桩奇遇，去得越多越容易撞见。${S.lv >= 2 && alive().length < compCap() ? '途中或有邂逅。' : ''}${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，此时斗法落败恐有陨落之危。</span>' : ''}</p>`;
 }
 
 function sideSect() {
@@ -1721,15 +1974,33 @@ function sideComp() {
   return head + `<div class="list">${order.map(i => cards[i]).join('')}</div>`;
 }
 
+/* 法宝神通一览：已得的亮起，下一项给出预告 */
+function fabaoSkills() {
+  const rows = FB_SK.map((k, i) => {
+    if (!k) return '';
+    const got = sk(i), next = i === S.fabao + 1, broke = i === 9 && S.flags.bell;
+    if (!got && !next && i > S.fabao + 1) return `<li class="sk off"><b>${FABAO[i]}</b><span>？？？</span></li>`;
+    return `<li class="sk ${got ? (broke ? 'used' : 'on') : 'off'}"><b>${FABAO[i]}·${k.n}</b><span>${k.d}${broke ? '（钟已碎，此世护主之力已用尽）' : next ? '（下一阶领悟）' : ''}</span></li>`;
+  }).join('');
+  return `<h3 class="sec-h" style="margin-top:12px">法宝神通</h3>
+    <p class="note" style="margin:4px 0 8px">本命法宝每晋一阶，便继承一项器灵神通，此前所得神通全部保留。</p><ul class="sks">${rows}</ul>`;
+}
+function sidePath() {
+  if (!S.path) return `<div class="sum"><span class="small">道途</span><p class="note">${realm() >= 1 ? '尚未择道。' : '筑基之后，传功长老会让你在剑修、丹修、体修中择一道而行。'}</p></div>`;
+  const P = PATHS[S.path];
+  return `<div class="sum"><div class="top"><span class="rank">${P.n}</span><span class="chip gold">${P.tag}</span></div><p class="note">${P.d}</p></div>`;
+}
 function sideHome() {
   const up = (k, title, now, eff, c) => `<div class="item"><h3>${title}</h3>
     <div class="act"><button class="btn sm" data-act="up" data-k="${k}" type="button" ${S.stones < c ? 'disabled' : ''}>${k === 'fabao' ? '祭炼' : k === 'array' ? '布阵' : '参悟'}</button>${costTag(c)}</div>
     <div class="meta">${now}</div><p>${eff}</p>${fbHtml('up:' + k)}</div>`;
-  return '<div class="list">'
+  return sidePath() + '<div class="list" style="margin-top:10px">'
     + up('gongfa', '功法', `《${gongfaName(S.gongfa)}》`, `修炼速度 ×${(1 + .3 * S.gongfa).toFixed(1)}，下一重 ×${(1 + .3 * (S.gongfa + 1)).toFixed(1)}。转世时可保留一半。`, costGongfa())
-    + up('array', '聚灵阵', S.array ? cn(S.array) + '阶聚灵阵' : '洞府空空如也', `汇聚灵气，修炼速度 ×${(1 + .25 * S.array).toFixed(2)}，下一阶 ×${(1 + .25 * (S.array + 1)).toFixed(2)}。`, costArray())
-    + up('fabao', '本命法宝', `${fabaoName(S.fabao)} · 战力 ${fmt(pwr())} → ${fmt(Math.round(power() / (1 + .15 * S.fabao) * (1 + .15 * (S.fabao + 1)) * 100))}`, `斗法战力 ×${(1 + .15 * S.fabao).toFixed(2)}，渡劫时护体 +6、天雷减伤 ${Math.min(55, 5 * S.fabao)}%。`, costFabao())
-    + '</div>';
+    + up('array', '聚灵阵', S.array ? `${arrayName(S.array)}（${cn(S.array)}阶）` : '洞府空空如也',
+      `汇聚灵气，修炼速度 ×${(1 + .25 * S.array).toFixed(2)}；下一阶「${arrayName(S.array + 1)}」×${(1 + .25 * (S.array + 1)).toFixed(2)}。`, costArray())
+    + up('fabao', '本命法宝', `${fabaoName(S.fabao)} · 战力 ${fmt(pwr())} → ${fmt(Math.round(power() / fabaoMul() * (fabaoMul() + (isPath('jian') ? .225 : .15)) * (S.fabao + 1 === 10 ? 1.2 : 1) * 100))}`,
+      `斗法战力 ×${fabaoMul().toFixed(2)}，渡劫时护体 +6、天雷减伤 ${Math.min(55, 5 * S.fabao)}%。`, costFabao())
+    + '</div>' + fabaoSkills();
 }
 
 function sidePill() {
@@ -1741,7 +2012,7 @@ function sidePill() {
 function sideTower() {
   const f = S.tower + 1, w = towerWin(f), L = towerLoot(f), boss = f % 10 === 0;
   const nb = Math.ceil(f / 10) * 10, NB = towerLoot(nb);
-  return `<div class="sum"><div class="top"><span class="rank">第 ${f} 层</span><span class="chip gold">历代最高 ${towerBest} 层</span></div>
+  return `<div class="sum"><div class="top"><span class="rank">第 ${f} 层</span><span class="chip gold">历代最高 ${towerBest} 层</span>${qyChip('tower')}</div>
     <p class="note">一座无尽之塔，一层比一层强，每十层有妖王镇守。塔灵护持，落败只会负伤、不会陨落。本世已登 ${S.tower} 层，转世后从头爬起。</p></div>
     <div class="list"><div class="item"><h3>${towerMon(f)}${boss ? '<span class="chip red">妖王</span>' : ''}${riskChip(w)}</h3>
       <div class="act"><button class="btn sm ${boss ? 'gold' : ''}" data-act="climb" type="button">挑战</button></div>
@@ -1876,6 +2147,108 @@ function drawTrib(dt) {
   tctx.shadowBlur = 0; tctx.globalAlpha = 1;
 }
 
+/* ---------- 背景音乐 ---------- */
+/* 用 Web Audio 循环播放：<audio loop> 在 MP3 首尾会留一小段静音，循环时听得出断点 */
+/* calm：日常修炼《云间少年》；jing：大境界前修为圆满、等着冲关时《静水竹影》；trib：渡劫；peak：证道祖时放一遍《山巅决》 */
+const BGM = { calm: 'audio/yunjian.mp3', jing: 'audio/jingshui.mp3', trib: 'audio/trib.mp3', peak: 'audio/peak.mp3' };
+const wantTrack = () => {
+  if (trib) return 'trib';
+  const L = LEVELS[S.lv];
+  return S.started && !S.over && S.xp >= req(S.lv) && (L.trib || nextMajor()) ? 'jing' : 'calm';
+};
+let stingOn = false;
+const BGM_KEY = 'wendao-bgm', BGM_VOL = .55;
+let musicOn = true;
+try { musicOn = localStorage.getItem(BGM_KEY) !== 'off'; } catch (e) {}
+let actx = null, master = null, cur = null, want = 'calm';
+const bufs = {};
+function audioInit() {
+  if (actx) return true;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  actx = new AC();
+  master = actx.createGain(); master.gain.value = musicOn ? BGM_VOL : 0; master.connect(actx.destination);
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  return true;
+}
+/* 找出编码器在首尾补的静音，循环时跳过 */
+function loopPoints(b) {
+  const d = b.getChannelData(0), n = d.length, lim = Math.min(n >> 1, Math.round(b.sampleRate * .2)), th = 3e-4;
+  let s = 0, e = n - 1;
+  while (s < lim && Math.abs(d[s]) < th) s++;
+  while (e > n - 1 - lim && Math.abs(d[e]) < th) e--;
+  return { ls: s / b.sampleRate, le: (e + 1) / b.sampleRate };
+}
+function loadBgm(name) {
+  if (!bufs[name]) bufs[name] = fetch(BGM[name]).then(r => r.arrayBuffer())
+    .then(ab => new Promise((res, rej) => actx.decodeAudioData(ab, res, rej)))
+    .then(b => Object.assign({ b }, loopPoints(b)))
+    .catch(e => { delete bufs[name]; throw e; });
+  return bufs[name];
+}
+/* 切到某首曲子：新曲淡入，旧曲淡出 */
+function bgm(name) {
+  want = name;
+  if (!actx || !musicOn || actx.state !== 'running' || (cur && cur.name === name)) return;
+  loadBgm(name).then(B => {
+    if (want !== name || (cur && cur.name === name) || !musicOn) return;
+    const t = actx.currentTime, g = actx.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(stingOn ? 0 : 1, t + 1.2); g.connect(master);
+    const src = actx.createBufferSource();
+    src.buffer = B.b; src.loop = true; src.loopStart = B.ls; src.loopEnd = B.le;
+    src.connect(g); src.start(t, B.ls);
+    if (cur) {
+      const o = cur;
+      o.gain.gain.cancelScheduledValues(t); o.gain.gain.setValueAtTime(o.gain.gain.value, t);
+      o.gain.gain.linearRampToValueAtTime(0, t + 1.2); o.src.stop(t + 1.3);
+    }
+    cur = { name, src, gain: g };
+  }).catch(() => {});
+}
+/* 只放一遍的曲子（如证道祖时的《山巅决》）：先压下背景乐，放完再慢慢还原 */
+function sting(name) {
+  if (!actx || !musicOn || actx.state !== 'running') return;
+  loadBgm(name).then(B => {
+    if (!musicOn) return;
+    const fade = (to, dur) => {
+      if (!cur) return;
+      const g = cur.gain.gain, t = actx.currentTime;
+      g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(to, t + dur);
+    };
+    const src = actx.createBufferSource();
+    src.buffer = B.b; src.connect(master);
+    stingOn = true; fade(0, .8);
+    src.start(actx.currentTime + .3);
+    src.onended = () => { stingOn = false; fade(1, 2.5); };
+  }).catch(() => {});
+}
+/* 手机浏览器要求先有一次点击，声音才放得出来 */
+function unlockAudio() {
+  if (!audioInit()) return;
+  const go = () => { if (actx.state === 'running') { ['pointerdown', 'touchend', 'keydown'].forEach(ev => removeEventListener(ev, unlockAudio, true)); bgm(want); } };
+  if (actx.state === 'suspended' && !document.hidden) actx.resume().then(go, () => {}); else go();
+}
+['pointerdown', 'touchend', 'keydown'].forEach(ev => addEventListener(ev, unlockAudio, true));
+function setMusic(on) {
+  musicOn = on;
+  try { localStorage.setItem(BGM_KEY, on ? 'on' : 'off'); } catch (e) {}
+  $('#b-bgm').textContent = `音乐 · ${on ? '开' : '关'}`;
+  $('#b-bgm').setAttribute('aria-pressed', String(on));
+  if (!audioInit()) return;
+  const t = actx.currentTime;
+  master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(on ? BGM_VOL : 0, t + .4);
+  if (on) { if (actx.state === 'suspended') actx.resume().then(() => bgm(want), () => {}); else bgm(want); }
+}
+$('#b-bgm').addEventListener('click', () => setMusic(!musicOn));
+$('#b-bgm').textContent = `音乐 · ${musicOn ? '开' : '关'}`;
+$('#b-bgm').setAttribute('aria-pressed', String(musicOn));
+document.addEventListener('visibilitychange', () => {
+  if (!actx) return;
+  if (document.hidden) actx.suspend().catch(() => {});
+  else if (musicOn) actx.resume().then(() => bgm(want), () => {});
+});
+
 /* ---------- 存档 ---------- */
 /* t：最后一次在线的时刻。页面藏到后台时不刷新它，回来时按这段空白结算闭关 */
 function save() {
@@ -1930,6 +2303,7 @@ document.addEventListener('click', e => {
   else if (a === 'climb') act('climb', climb);
   else if (a === 'away') { away = null; save(); showModal(); }
   else if (a === 'gallery') { ui = 'gallery'; showModal(); }
+  else if (a === 'qiyu-book') { ui = 'qiyu'; showModal(); }
   else if (a === 'close') { ui = null; showModal(); }
   else if (a === 'test') testRoot(false);
   else if (a === 'reroll') testRoot(true);
@@ -1950,7 +2324,7 @@ document.addEventListener('input', e => {
 });
 $('#b-med').addEventListener('click', meditate);
 $('#b-sex').addEventListener('click', () => { S.sex = S.sex === 'f' ? 'm' : 'f'; save(); renderStatus(); if (!S.started) showModal(); });
-$('#b-break').addEventListener('click',() => { act('', breakthrough); renderStatus(); renderSide(); renderLog(); });
+$('#b-break').addEventListener('click',() => { act('', breakthrough); if (S.pending) showModal(); renderStatus(); renderSide(); renderLog(); });
 disc.addEventListener('pointerdown', e => { e.preventDefault(); meditate(); });
 disc.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); meditate(); } });
 let resetArm = 0;

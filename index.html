@@ -44,7 +44,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .idrow{display:flex;gap:14px;align-items:center}
 .seal{flex:none;width:62px;height:62px;border-radius:6px;background:var(--cinnabar);color:var(--seal-fg);
   display:grid;place-items:center;font-family:var(--f-display);font-size:25px;line-height:1;
-  writing-mode:vertical-rl;letter-spacing:.06em;box-shadow:inset 0 0 0 3px var(--cinnabar),inset 0 0 0 4px var(--seal-fg)}
+  text-align:center;line-height:1.08;box-shadow:inset 0 0 0 3px var(--cinnabar),inset 0 0 0 4px var(--seal-fg)}
 .who{min-width:0}
 .who .name{font-size:20px;font-weight:700;letter-spacing:.04em}
 .who .sub{color:var(--muted);font-size:13px}
@@ -98,6 +98,35 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .toast.rose{border-left-color:var(--rose)}
 .toast.out{opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s}
 @keyframes toastin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* 立绘 */
+.fig{position:absolute;inset:0;pointer-events:none}
+.fig svg{display:block;width:100%;height:100%;overflow:visible}
+.fig .me{position:absolute;left:25%;top:16%;width:50%;aspect-ratio:200/220;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45));animation:breathe 4.5s ease-in-out infinite}
+.fig .mate{position:absolute;width:27%;aspect-ratio:200/220;top:56%;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));animation:breathe 5.2s ease-in-out infinite}
+.fig .m0{left:1%}
+.fig .m1{right:1%;animation-delay:-1.7s}
+.fig .m2{left:1%;top:20%;width:23%;animation-delay:-3s}
+@keyframes breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.pt{flex:none;width:76px;height:80px;border-radius:8px;background:radial-gradient(circle at 50% 40%,var(--line),var(--panel) 75%);border:1px solid var(--line);overflow:hidden}
+.pt svg{display:block;width:100%;height:100%}
+.mc{background:var(--panel-2);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.mc-top{display:flex;gap:12px;align-items:center}
+.mc-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.mc-info .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.mc-name{font-family:var(--f-display);font-size:24px;line-height:1.1;color:var(--rose)}
+.mc-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.mc-acts .btn.sm{flex-direction:column;gap:0;padding:6px 4px;font-size:13px;white-space:nowrap}
+.mc-acts .btn small{font-size:10.5px}
+.mc-acts small.no{color:var(--cinnabar)}
+.mc-hint{font-size:11.5px}
+.mc .fb{margin-top:0}
+.mc.dead .pt{filter:grayscale(1);opacity:.55}
+.mc.dead .mc-name{color:var(--muted)}
+.meet-pt{align-self:center;width:128px;height:136px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:radial-gradient(circle at 50% 40%,var(--panel-2),var(--ink) 80%)}
+.meet-pt svg{display:block;width:100%;height:100%}
+.sexrow{display:flex;gap:12px;align-items:center}
+.sexrow .meet-pt{width:84px;height:90px;align-self:auto}
+.sexrow .row{flex:1}
 .chips{display:flex;flex-wrap:wrap;gap:6px;min-height:22px}
 .small{font-size:12px;color:var(--muted)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:0}
@@ -197,7 +226,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 @media (max-width:420px){.elist{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){
   .float{animation-duration:.01s}
-  .fb.new,.toast,.res .pw b.bump{animation:none}
+  .fb.new,.toast,.res .pw b.bump,.fig .me,.fig .mate{animation:none}
   .flash{animation:none}
   .bar i{transition:none}
 }
@@ -211,6 +240,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
     </div>
     <div class="head-r">
       <span id="h-reinc">第一世</span>
+      <button class="btn sm" id="b-sex" type="button" title="切换人物形象">形象 · 男修</button>
       <button class="btn sm gold" data-act="gallery" id="b-gallery" type="button">结局 0/10</button>
       <button class="btn sm red" id="b-reset" type="button">散功重修</button>
     </div>
@@ -252,6 +282,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
     </div>
     <div class="disc" id="disc" role="button" tabindex="0" aria-label="运功一次">
       <canvas id="cv"></canvas>
+      <div class="fig" id="fig"></div>
     </div>
     <div class="actions">
       <button class="btn big jade" id="b-med" type="button">运功<small>点阵盘亦可</small></button>
@@ -398,7 +429,7 @@ const ENDINGS = [
 ];
 const END_TEXT = {
   ascend: c => `${c.name}历经九九天劫，肉身重塑，破碎虚空而去。此界从此流传着你的名号。`,
-  couple: c => `最后一道天雷散去，仙光垂落。你回身握住${c.p}的手，二人并肩踏入仙门。后世话本里，这段道缘被写了一千遍。`,
+  couple: c => `最后一道天雷散去，仙光垂落。你回身握住${c.p}的手，${c.many ? '一行人' : '二人'}并肩踏入仙门。后世话本里，这段道缘被写了一千遍。`,
   alone: c => `你渡过了天劫，${c.p}却化作漫天光点。仙门在前，你回望人间良久，独自一人走了进去。`,
   patriarch: c => `飞升那日，${SECT}上下焚香相送。你的画像被供奉在祖师堂正中，受后世弟子万年香火。`,
   hermit: c => `你与${c.p}辞去一切，在一处无名山谷结庐而居。春种灵田，秋看落叶。长生未必有，此生已足够。`,
@@ -420,7 +451,7 @@ function fresh(prev) {
     reinc: prev ? prev.reinc + 1 : 0, log: [], started: false, over: '', endCtx: null, warned: -1,
     trips: 0, clicks: 0, rerolls: 1, xisui: false, sacrificed: false,
     sect: { contrib: 0, total: 0, rank: 0, left: false, tasks: [], refM: 36, tourneyM: 60 },
-    comp: null, pending: null,
+    comps: [], pending: null, sex: prev ? prev.sex : 'm', sacName: '',
   };
 }
 let S = fresh(null);
@@ -434,10 +465,16 @@ const root = () => ROOTS.find(r => r.id === S.root) || ROOTS[4];
 const req = lv => Math.round(40 * Math.pow(1.45, lv));
 const maxLifeY = () => REALMS[realm()].life + S.lifeY;
 const ageY = () => Math.floor(S.ageM / 12);
-const partner = () => S.comp && S.comp.alive && S.comp.partner ? S.comp : null;
+/* 道侣：可有多位。元婴可结两位，合体可结三位 */
+const alive = () => S.comps.filter(c => c.alive);
+const partners = () => S.comps.filter(c => c.alive && c.partner);
+const partner = () => partners()[0] || null;
+const pNames = () => partners().map(c => c.name).join('、');
+const compCap = () => realm() >= 6 ? 3 : realm() >= 3 ? 2 : 1;
+const pBoost = () => { const k = partners().length; return k ? 1.15 + .15 * k : 1; };
 const stipend = () => .12 * Math.pow(2.1, realm()) * (S.sect.left ? .3 : 1 + .5 * S.sect.rank);
 function rate(noBuff) {
-  let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * (partner() ? 1.3 : 1);
+  let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * pBoost();
   if (!noBuff) r *= (S.injT > 0 ? .5 : 1) * (S.tideT > 0 ? 2 : 1);
   return r;
 }
@@ -457,7 +494,7 @@ function chance() {
   if (S.lv >= TOP) return 0;
   if (!nextMajor()) return .92 - .02 * realm();
   const R = REALMS[realm() + 1];
-  return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? .35 : 0) + (partner() ? .05 : 0) - S.mo / 1000, .05, .95);
+  return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? .35 : 0) + (partners().length ? .03 + .02 * partners().length : 0) - S.mo / 1000, .05, .95);
 }
 
 let capture = null;
@@ -494,13 +531,12 @@ function monthly(m) {
     if ((sc.refM -= m) <= 0) { genBoard(); sc.refM = 36; }
     sc.tourneyM -= m;
   }
-  const c = S.comp;
-  if (c && c.alive) {
+  alive().forEach(c => {
     c.decayM += m;
     if (c.partner) c.sinceM += m;
     const per = c.partner ? 24 : 12, floor = c.partner ? 60 : 0;
     while (c.decayM >= per) { c.decayM -= per; if (c.fav > floor) c.fav--; if (c.partner) addMo(-1); }
-  }
+  });
 }
 
 function checkLife() {
@@ -517,9 +553,10 @@ function checkLife() {
 }
 
 function worldEvent() {
-  const p = partner(), sc = S.sect;
-  if (p && p.secret && !p.revealed && !sc.left && p.sinceM > 48 && Math.random() < .5) {
-    p.revealed = true; S.pending = { id: 'reveal' }; return;
+  const ps = partners(), p = ps.length ? pick(ps) : null, sc = S.sect;
+  const spy = ps.find(c => c.secret && !c.revealed && c.sinceM > 48);
+  if (spy && !sc.left && Math.random() < .5) {
+    spy.revealed = true; S.pending = { id: 'reveal', ci: S.comps.indexOf(spy) }; return;
   }
   if (!sc.left && S.lv >= 2 && sc.tourneyM <= 0 && Math.random() < .6) {
     sc.tourneyM = 120; S.pending = { id: 'tourney' }; return;
@@ -552,12 +589,14 @@ function breakthrough() {
   const usedPill = major && S.bpill > 0;
   if (usedPill) S.bpill = 0;
   if (Math.random() < p) {
+    const cap0 = compCap();
     S.lv++; S.xp = 0;
     const pa = partner();
-    if (pa) pa.lv = Math.max(pa.lv, S.lv - 1);
+    partners().forEach(c => { c.lv = Math.max(c.lv, S.lv - 1); });
     if (major) {
       S.yanshou = 0; addMo(8);
-      log(`${usedPill ? '服下' + REALMS[realm()].pill + '，' : ''}${pa ? pa.name + '在旁护法，' : ''}天地灵气倒灌，成功踏入${LEVELS[S.lv].name}！寿元增至 ${maxLifeY()} 年。境界愈高，心魔愈重。`, 'gold');
+      log(`${usedPill ? '服下' + REALMS[realm()].pill + '，' : ''}${pa ? pNames() + '在旁护法，' : ''}天地灵气倒灌，成功踏入${LEVELS[S.lv].name}！寿元增至 ${maxLifeY()} 年。境界愈高，心魔愈重。`, 'gold');
+      if (compCap() > cap0) log(`道心愈阔，此后可与 ${compCap()} 位知己道侣同行。`, 'rose');
       ripple(3, 'gold');
     } else {
       log(`突破至${LEVELS[S.lv].name}。`, 'good');
@@ -715,17 +754,22 @@ function exchange(id) {
 
 /* ---------- 道侣 ---------- */
 function maybeMeet(place, p) {
-  if (S.over || S.comp || S.lv < 2 || S.pending || Math.random() > p) return;
+  if (S.over || alive().length >= compCap() || S.lv < 2 || S.pending || Math.random() > p) return;
+  const taken = S.comps.map(c => c.name);
+  let name;
+  do { name = pick(SURN) + pick(C_GIVEN); } while (taken.includes(name) || name === S.name);
   const c = {
-    name: pick(SURN) + pick(C_GIVEN), orig: pick(C_ORIG), trait: pick(C_TRAIT),
+    name, orig: pick(C_ORIG), trait: pick(C_TRAIT),
+    sex: Math.random() < .8 ? (S.sex === 'f' ? 'm' : 'f') : S.sex,
     lv: clamp(S.lv + ri(-2, 3), 0, TOP - 1), fav: 10, partner: false,
     secret: Math.random() < .3, revealed: false, alive: true, sinceM: 0, decayM: 0,
   };
+  c.look = genLook(c);
   S.pending = { id: 'meet', c, place, s: ri(0, MEETS.length - 1) };
 }
 const giftCost = () => Math.round(20 * Math.pow(2.2, realm()));
-function compAct(a) {
-  const c = S.comp;
+function compAct(a, ci) {
+  const c = S.comps[ci];
   if (busy() || !c || !c.alive) return;
   if (a === 'gift') {
     const cost = giftCost();
@@ -747,36 +791,215 @@ function compAct(a) {
     log(`你与${c.name}于${S.sect.left ? '荒山' : SECT + '观星台'}焚香立誓，结为道侣。自此同修共进，生死相随。`, 'gold');
   } else if (a === 'hermit') {
     if (!c.partner || c.fav < 100 || realm() < 2) return;
-    if (Date.now() - hermitArm > 3000) { hermitArm = Date.now(); return; }
-    log(`你与${c.name}决意归隐，从此不问仙途。`, 'rose');
-    return endGame('hermit');
+    if (Date.now() - hermitArm > 3000 || hermitCi !== ci) { hermitArm = Date.now(); hermitCi = ci; return; }
+    log(`你与${pNames()}决意归隐，从此不问仙途。`, 'rose');
+    return endGame('hermit', { p: pNames() });
   }
   checkLife();
   save();
 }
-let hermitArm = 0;
+let hermitArm = 0, hermitCi = -1;
+
+/* ---------- 立绘：Q 版修士，纯 SVG 绘制 ---------- */
+const INK = '#2b2433', SKIN = '#fde7d8';
+/* 每个大境界一套装束：外袍 / 镶边 / 中衣 / 灵光 */
+const REALM_LOOK = [
+  { robe: '#b7bfcb', trim: '#67717f', inner: '#efece4', glow: '#78d0b4' }, // 炼气·外门灰布
+  { robe: '#d2e6ef', trim: '#3a7ca5', inner: '#f8f6f0', glow: '#78d0b4' }, // 筑基·青云内门
+  { robe: '#f4f1e8', trim: '#bf973a', inner: '#ffffff', glow: '#e8c35a' }, // 金丹·白衣金边
+  { robe: '#dccfee', trim: '#7759a6', inner: '#faf6ff', glow: '#c9a8f0' }, // 元婴·紫绡
+  { robe: '#31446c', trim: '#b8cbeb', inner: '#e9eef8', glow: '#a9c6ff' }, // 化神·星夜蓝
+  { robe: '#ececf1', trim: '#26252d', inner: '#ffffff', glow: '#d6dbe6' }, // 炼虚·阴阳
+  { robe: '#f5ecd2', trim: '#c4952a', inner: '#fffaf0', glow: '#f0c95a' }, // 合体·金纹
+  { robe: '#fbfaf6', trim: '#d1aa38', inner: '#ffffff', glow: '#ffe08a' }, // 大乘·素白鎏金
+  { robe: '#3b2c5e', trim: '#e2c56a', inner: '#efe7ff', glow: '#c9b8ff' }, // 渡劫·紫金雷纹
+];
+function playerLook() {
+  const r = S.started || S.lv ? realm() : 0, f = S.sex === 'f', R = REALM_LOOK[r];
+  const L = Object.assign({ sex: S.sex, hair: r >= 7 ? '#e3e6ee' : '#211b2a', eye: '#5a3d2a', eyes: 'closed',
+    style: r === 0 ? (f ? 'twin' : 'knot') : (f ? 'long' : 'halfup'), head: [], back: [],
+    seat: r >= 7 ? 'gold' : r >= 5 ? 'white' : r >= 3 ? 'pink' : 'mat',
+    orb: r >= 2, mark: r >= 4 ? (r >= 8 ? '#b9a2ff' : r >= 7 ? '#e2b53a' : '#d9573f') : '' }, R);
+  if (r === 0) L.head.push(f ? ['ribbon', '#d98f8f'] : ['pin', '#8a6a42']);
+  else if (r <= 2) { L.head.push(['pin', r === 1 ? '#6fbf9c' : '#d8b25a']); if (r === 2) L.head.push(['ribbon', R.trim]); }
+  else L.head.push([f ? 'buyao' : 'guan', r >= 6 ? '#e2c56a' : r === 5 ? '#7fc8a9' : '#cfd6e2']);
+  if (r === 1 || r === 2) L.back.push('sword1');
+  if (r >= 3) L.back.push('silk');
+  if (r === 4 || r === 8) L.back.push('swords');
+  if (r >= 5) L.back.push('halo');
+  if (r >= 6) L.back.push('aura');
+  if (r === 7) L.back.push('rays');
+  if (r === 8) L.back.push('bolt');
+  return L;
+}
+/* 道侣按出身定装束与配饰 */
+const ORIG_LOOK = {
+  '天音阁弟子':   { robe: '#c4b3e3', trim: '#6b54a2', acc: 'flute' },
+  '药王谷传人':   { robe: '#acd5b0', trim: '#3a7a4f', acc: 'herb' },
+  '独行散修':     { robe: '#968c7a', trim: '#4b4337', acc: 'hat' },
+  '剑宗少主':     { robe: '#eaf0f8', trim: '#386cad', acc: 'sword', style: 'pony' },
+  '万花宫弟子':   { robe: '#f3bdcd', trim: '#c05478', acc: 'flower' },
+  '没落世家之后': { robe: '#8b3945', trim: '#d9b46a', acc: 'noble' },
+  '化形的灵狐':   { robe: '#f6f1e7', trim: '#d9853b', acc: 'fox' },
+};
+const HAIRS = ['#211b2a', '#2b2339', '#3c2b23', '#1f2c4a', '#5c3c2d', '#d3d6df', '#6b2f3c', '#40305f'];
+const EYES = ['#6b4a2e', '#b8862e', '#3f8f6e', '#6e58b8', '#4f86c6', '#b24a4a'];
+function genLook(c) {
+  const O = ORIG_LOOK[c.orig] || ORIG_LOOK['独行散修'], f = c.sex === 'f', fox = O.acc === 'fox';
+  return { sex: c.sex, robe: O.robe, trim: O.trim, inner: '#fbf8f2', glow: O.trim, acc: O.acc, eyes: 'open',
+    hair: fox ? pick(['#f3efe6', '#d9853b', '#2b2339']) : pick(HAIRS), eye: fox ? '#d9a032' : pick(EYES),
+    style: O.style || (f ? pick(['long', 'twin', 'long']) : pick(['halfup', 'knot', 'halfup'])),
+    head: O.acc === 'noble' ? [[f ? 'buyao' : 'guan', '#d9b46a']] : [], back: [], seat: 'mat' };
+}
+
+const P = (d, fill, extra = '') => `<path d="${d}" fill="${fill}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round" ${extra}/>`;
+const mirror = s => `<g transform="translate(200,0) scale(-1,1)">${s}</g>`;
+function sword(x, y, len, ang, hilt) {
+  return `<g transform="translate(${x},${y}) rotate(${ang})">${P(`M-3.4,0 L-3.4,${9 - len} L0,${-len} L3.4,${9 - len} L3.4,0 Z`, '#e4eaf1', 'stroke-width="1.2"')}
+    <path d="M0,-5 L0,${11 - len}" stroke="#a7b5c6" stroke-width="1"/>${P('M-11,0 L11,0 L8,5 L-8,5 Z', '#d6b45a', 'stroke-width="1.2"')}
+    <rect x="-2.8" y="5" width="5.6" height="18" rx="1.6" fill="${hilt}" stroke="${INK}" stroke-width="1.2"/><circle cy="26" r="3.4" fill="#d6b45a" stroke="${INK}" stroke-width="1.2"/></g>`;
+}
+function flower(x, y, r, col) {
+  let s = '';
+  for (let i = 0; i < 5; i++) { const a = i * 1.2566 - 1.57; s += `<circle cx="${(Math.cos(a) * r).toFixed(1)}" cy="${(Math.sin(a) * r).toFixed(1)}" r="${(r * .72).toFixed(1)}" fill="${col}" stroke="${INK}" stroke-width=".8"/>`; }
+  return `<g transform="translate(${x},${y})">${s}<circle r="${(r * .5).toFixed(1)}" fill="#f6d36b"/></g>`;
+}
+function petals(cx, cy, len, angs, fill, line) {
+  return angs.map(a => `<path transform="translate(${cx},${cy}) rotate(${a})" d="M0,0 C-16,-${len * .4} -11,-${len * .8} 0,-${len} C11,-${len * .8} 16,-${len * .4} 0,0 Z" fill="${fill}" stroke="${line}" stroke-width="1.3"/>`).join('');
+}
+const LOTUS = { pink: ['#f7c6d4', '#c0587a'], white: ['#f8f5ee', '#a59e90'], gold: ['#f5dc8f', '#b8892a'] };
+
+/* L：形象参数；id：本图内渐变的前缀；bust：只取半身像 */
+function figSvg(L, id, bust) {
+  const f = L.sex === 'f', B = L.back || [], o = [];
+  const hair = d => P(d, L.hair);
+  o.push(`<defs><radialGradient id="${id}a"><stop offset="0" stop-color="${L.glow}" stop-opacity=".6"/><stop offset="1" stop-color="${L.glow}" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}o" cx=".35" cy=".35"><stop offset="0" stop-color="#fffbe6"/><stop offset=".5" stop-color="#f4cb52"/><stop offset="1" stop-color="#b8801c"/></radialGradient></defs>`);
+  /* —— 身后：灵光、法相、飞剑、披帛 —— */
+  if (B.includes('aura')) o.push(`<ellipse cx="100" cy="122" rx="100" ry="108" fill="url(#${id}a)"/>`);
+  if (B.includes('rays')) {
+    let s = '';
+    for (let i = 0; i < 20; i++) { const a = i * Math.PI / 10, c = Math.cos(a), n = Math.sin(a); s += `<line x1="${(100 + c * 64).toFixed(1)}" y1="${(78 + n * 64).toFixed(1)}" x2="${(100 + c * (i % 2 ? 74 : 82)).toFixed(1)}" y2="${(78 + n * (i % 2 ? 74 : 82)).toFixed(1)}"/>`; }
+    o.push(`<g stroke="${L.glow}" stroke-width="2.4" stroke-linecap="round" opacity=".85">${s}</g>`);
+  }
+  if (B.includes('halo')) o.push(`<circle cx="100" cy="78" r="57" fill="none" stroke="${L.glow}" stroke-width="3.2" opacity=".9"/><circle cx="100" cy="78" r="62" fill="none" stroke="${L.glow}" stroke-width="1.2" stroke-dasharray="3 5" opacity=".75"/>`);
+  if (B.includes('bolt')) {
+    const z = '<polyline points="34,26 48,52 36,60 56,94"/><polyline points="16,104 32,122 22,130 38,156"/>';
+    o.push(`<g fill="none" stroke="${L.glow}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" opacity=".95">${z}${mirror(z)}</g>`);
+  }
+  if (B.includes('swords')) o.push([-40, -20, 0, 20, 40].map(a => sword(100, 150, a ? 120 : 136, a, L.trim)).join(''));
+  if (B.includes('sword1')) o.push(sword(136, 158, 126, 30, L.trim));
+  if (B.includes('silk')) {
+    const s = '<path d="M74,120 C40,100 14,118 20,150 C25,174 12,188 4,200"/>';
+    o.push(`<g fill="none" stroke-linecap="round"><g stroke="${L.glow}" stroke-width="7" opacity=".85">${s}${mirror(s)}</g><g stroke="#fff" stroke-width="1.6" opacity=".6">${s}${mirror(s)}</g></g>`);
+  }
+  if (L.acc === 'fox' && !bust) o.push(P('M146,196 C198,202 206,138 178,116 C186,148 174,176 140,184 Z', L.hair) + P('M186,128 C196,136 198,146 196,154 C190,146 184,140 180,130 Z', '#fff'));
+  if (L.acc === 'sword') o.push(sword(140, 96, 120, -150, L.trim));
+  if (L.acc === 'flute') o.push(`<line x1="146" y1="80" x2="64" y2="196" stroke="${INK}" stroke-width="8.5" stroke-linecap="round"/><line x1="146" y1="80" x2="64" y2="196" stroke="#86cdb0" stroke-width="5.5" stroke-linecap="round"/><path d="M146,80 L152,104" stroke="#c0453a" stroke-width="2.4"/><circle cx="152" cy="106" r="3" fill="#c0453a"/>`);
+  /* —— 后发 —— */
+  if (L.style === 'long') o.push(hair('M62,58 C32,100 28,160 38,190 L162,190 C172,160 168,100 138,58 Z'));
+  if (L.style === 'halfup') o.push(hair('M66,60 C54,96 54,128 60,150 L140,150 C146,128 146,96 134,60 Z'));
+  if (L.style === 'pony') o.push(hair('M116,34 C168,32 176,104 158,156 C152,122 142,86 114,52 Z'));
+  if (L.style === 'twin') o.push(hair('M66,60 C52,86 52,112 60,128 L140,128 C148,112 148,86 134,60 Z'));
+  /* —— 坐具（后层）—— */
+  if (L.seat === 'mat') o.push(`<ellipse cx="100" cy="202" rx="76" ry="15" fill="#a47c45" stroke="${INK}" stroke-width="1.5"/><ellipse cx="100" cy="200" rx="58" ry="9" fill="none" stroke="#7a5a2e" stroke-width="1.2"/><ellipse cx="100" cy="199" rx="36" ry="5" fill="none" stroke="#7a5a2e" stroke-width="1.2"/>`);
+  else if (LOTUS[L.seat]) o.push(petals(100, 206, 50, [-82, -56, -28, 28, 56, 82], ...LOTUS[L.seat]));
+  /* —— 身躯：交领广袖，盘膝而坐 —— */
+  o.push(P('M70,116 C62,134 58,154 56,176 L144,176 C142,154 138,134 130,116 C118,110 82,110 70,116 Z', L.robe));
+  o.push(P('M28,198 C26,174 58,162 100,162 C142,162 174,174 172,198 C150,211 50,211 28,198 Z', L.robe));
+  o.push(`<path d="M62,193 C78,184 92,184 100,191 C108,184 122,184 138,193" fill="none" stroke="${L.trim}" stroke-width="1.6" opacity=".7"/>`);
+  const sleeve = P('M72,118 C54,126 42,154 44,186 C58,193 80,191 92,181 C86,162 82,140 78,122 Z', L.robe)
+    + `<path d="M44,186 C58,193 80,191 92,181" fill="none" stroke="${L.trim}" stroke-width="4.5" stroke-linecap="round"/>`;
+  o.push(sleeve + mirror(sleeve));
+  o.push(P('M86,113 L100,140 L114,113 Z', L.inner));
+  o.push(`<path d="M84,112 L106,148 M116,112 L101,134" stroke="${L.trim}" stroke-width="5" stroke-linecap="round" fill="none"/>`);
+  o.push(P('M60,150 C80,156 120,156 140,150 L141,159 C120,165 80,165 59,159 Z', L.trim));
+  if (L.robe === '#ececf1') o.push(`<circle cx="100" cy="132" r="7" fill="#fff" stroke="${INK}" stroke-width="1.2"/><path d="M100,125 A3.5,3.5 0 0 1 100,132 A3.5,3.5 0 0 0 100,139 A7,7 0 0 1 100,125 Z" fill="${INK}"/>`);
+  if (L.orb) o.push(`<circle cx="100" cy="168" r="15" fill="${L.glow}" opacity=".3"/><circle cx="100" cy="169" r="7.5" fill="url(#${id}o)" stroke="${INK}" stroke-width="1"/>`);
+  o.push(`<ellipse cx="91" cy="179" rx="9.5" ry="6" fill="${SKIN}" stroke="${INK}" stroke-width="1.3"/><ellipse cx="109" cy="179" rx="9.5" ry="6" fill="${SKIN}" stroke="${INK}" stroke-width="1.3"/>`);
+  if (LOTUS[L.seat]) o.push(petals(100, 216, 30, [-62, -32, 0, 32, 62], ...LOTUS[L.seat]));
+  /* —— 头部 —— */
+  o.push(P('M93,104 L93,118 L107,118 L107,104 Z', SKIN, 'stroke-width="1.2"'));
+  o.push(P('M62,76 C62,50 80,38 100,38 C120,38 138,50 138,76 C138,98 122,114 100,116 C78,114 62,98 62,76 Z', SKIN));
+  const eye = x => {
+    const out = x < 100 ? -1 : 1, y = 86;
+    if ((L.eyes || 'open') === 'closed')
+      return `<path d="M${x - 8},${y - 1} Q${x},${y + 6} ${x + 8},${y - 1} M${x + 8 * out},${y - 1} L${x + 11 * out},${y - 3.5}${f ? ` M${x + 4 * out},${y + 2.6} L${x + 6 * out},${y + 6} M${x},${y + 3.4} L${x + out},${y + 7}` : ''}" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+    return `<ellipse cx="${x}" cy="${y}" rx="8.5" ry="10.5" fill="#fff"/><ellipse cx="${x}" cy="${y + 1}" rx="7" ry="9.2" fill="${L.eye}"/>
+      <ellipse cx="${x}" cy="${y - 3}" rx="7" ry="5" fill="#000" opacity=".22"/><ellipse cx="${x}" cy="${y + 1.5}" rx="3.2" ry="4.6" fill="#1b1522"/>
+      <circle cx="${x - 2.6}" cy="${y - 3.6}" r="2.6" fill="#fff"/><circle cx="${x + 2.8}" cy="${y + 4.2}" r="1.3" fill="#fff"/>
+      <path d="M${x - 10},${y - 6} Q${x},${y - 14} ${x + 10},${y - 7}${f ? ` L${x + 13 * out},${y - 10}` : ''}" fill="none" stroke="${INK}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  };
+  o.push(eye(84) + eye(116));
+  o.push(`<ellipse cx="76" cy="100" rx="7" ry="3.4" fill="#f39a9a" opacity=".42"/><ellipse cx="124" cy="100" rx="7" ry="3.4" fill="#f39a9a" opacity=".42"/>`);
+  o.push(`<path d="M95.5,104 Q100,107.5 104.5,104" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`);
+  if (L.mark) o.push(`<path d="M100,57 L103.2,63.5 L100,70 L96.8,63.5 Z" fill="${L.mark}" stroke="${INK}" stroke-width=".8"/>`);
+  /* —— 鬓发、刘海 —— */
+  const lock = f || L.style === 'long' ? 'M60,70 C53,94 55,114 62,128 C65,112 67,96 67,78 Z' : 'M60,72 C57,86 58,97 62,104 C63,94 64,85 66,77 Z';
+  o.push(hair(lock) + mirror(hair(lock)));
+  o.push(hair('M58,82 C53,42 80,27 100,27 C120,27 147,42 142,82 C138,71 134,64 130,59 C126,66 117,68 111,61 C107,56 103,52 100,47 C97,52 93,56 89,61 C83,68 74,66 70,59 C66,64 62,71 58,82 Z'));
+  /* —— 发髻 —— */
+  if (L.style === 'knot' || L.style === 'halfup') o.push(`<circle cx="100" cy="27" r="${L.style === 'knot' ? 12 : 10.5}" fill="${L.hair}" stroke="${INK}" stroke-width="1.5"/>`);
+  if (L.style === 'twin') o.push(`<circle cx="68" cy="38" r="13" fill="${L.hair}" stroke="${INK}" stroke-width="1.5"/><circle cx="132" cy="38" r="13" fill="${L.hair}" stroke="${INK}" stroke-width="1.5"/>`);
+  if (L.style === 'pony') o.push(`<path d="M106,30 Q114,26 120,34" fill="none" stroke="${L.trim}" stroke-width="4" stroke-linecap="round"/>`);
+  /* —— 头饰 —— */
+  (L.head || []).forEach(([k, c]) => {
+    if (k === 'pin') o.push(`<path d="M82,22 L121,33" stroke="${INK}" stroke-width="4.6" stroke-linecap="round"/><path d="M82,22 L121,33" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/><circle cx="122" cy="33" r="3.4" fill="${c}" stroke="${INK}" stroke-width="1"/>`);
+    if (k === 'ribbon') {
+      const tw = L.style === 'twin';
+      const bow = (x, y) => P(`M${x},${y} L${x - 10},${y - 6} L${x - 9},${y + 6} Z M${x},${y} L${x + 10},${y - 6} L${x + 9},${y + 6} Z`, c, 'stroke-width="1"');
+      o.push(tw ? bow(68, 50) + bow(132, 50) + `<path d="M126,52 C132,66 128,78 138,90 M74,52 C68,66 72,78 62,90" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`
+        : bow(112, 30) + `<path d="M116,34 C134,46 130,66 142,84" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`);
+    }
+    if (k === 'guan') o.push(P('M87,30 L89,12 L100,19 L111,12 L113,30 Z', c) + `<path d="M78,25 L124,25" stroke="${INK}" stroke-width="4.4" stroke-linecap="round"/><path d="M78,25 L124,25" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`);
+    if (k === 'buyao') o.push(`<path d="M112,36 L140,24" stroke="${INK}" stroke-width="4.2" stroke-linecap="round"/><path d="M112,36 L140,24" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>`
+      + flower(138, 25, 4.2, c) + `<path d="M132,30 L134,48 M138,30 L142,46" stroke="${c}" stroke-width="1.2"/><circle cx="134" cy="49" r="2.2" fill="#e8a0b4"/><circle cx="142" cy="47" r="2.2" fill="#9fd6c0"/>`
+      + `<path d="M88,36 L64,26" stroke="${INK}" stroke-width="3.6" stroke-linecap="round"/><path d="M88,36 L64,26" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`);
+  });
+  /* —— 出身配饰（前层）—— */
+  if (L.acc === 'fox') { const ear = P('M68,52 L60,12 L92,38 Z', L.hair) + P('M70,46 L65,22 L86,38 Z', '#f6b7c4', 'stroke-width="1"'); o.push(ear + mirror(ear)); }
+  if (L.acc === 'hat') o.push(P('M30,54 L100,8 L170,54 C142,63 58,63 30,54 Z', '#d2b06c') + `<path d="M100,8 L66,58 M100,8 L100,61 M100,8 L134,58" stroke="#8a6a35" stroke-width="1.2"/>`);
+  if (L.acc === 'flower') o.push(flower(132, 46, 6, '#f7a8c0') + flower(122, 36, 4.4, '#fff') + flower(70, 44, 4.4, '#f7a8c0'));
+  if (L.acc === 'herb') o.push(P('M126,44 C132,32 146,28 154,32 C148,42 136,48 126,44 Z', '#7cc48f', 'stroke-width="1.1"') + `<path d="M126,44 L150,33" stroke="#3a7a4f" stroke-width="1.1"/>` + P('M124,46 C122,34 128,24 136,22 C138,32 132,42 124,46 Z', '#9fd6a8', 'stroke-width="1.1"'));
+  return `<svg viewBox="${bust ? '38 4 124 132' : '0 0 200 220'}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${o.join('')}</svg>`;
+}
+/* 阵盘中央：本人打坐，道侣陪坐两侧 */
+function figHtml() {
+  const ps = partners().slice(0, 3);
+  return ps.map((c, i) => `<div class="mate m${i}">${figSvg(Object.assign({}, c.look, { eyes: 'closed' }), 'pm' + i)}</div>`).join('')
+    + `<div class="me">${figSvg(playerLook(), 'pl')}</div>`;
+}
 
 /* ---------- 抉择事件 ---------- */
 const EVENTS = {
   meet: {
     view: ev => ({ t: '邂逅', cls: 'rose',
-      body: `<p>${esc(MEETS[ev.s || 0](ev.c, ev.place))}</p>
+      body: `<div class="meet-pt">${figSvg(ev.c.look, 'meet', true)}</div>
+        <p>${esc(MEETS[ev.s || 0](ev.c, ev.place))}</p>
         <p class="m">${esc(ev.c.name)}，${ev.c.orig}，${ev.c.trait}，修为${LEVELS[ev.c.lv].name}。</p>`,
-      opts: [['结为知己', '日后可赠礼、论道、同游，情谊深厚后可结为道侣'], ['拱手作别', '萍水相逢，各奔前程']] }),
+      opts: [['结为知己', '日后可赠礼、论道、同游，情谊深厚后可结为道侣'
+        + (partners().length ? `。${pNames()}知道后难免吃味，情谊 −8` : '')], ['拱手作别', '萍水相逢，各奔前程']] }),
     pick(ev, i) {
-      if (i === 0) { S.comp = ev.c; log(`结识${ev.c.name}（${ev.c.orig}），引为知己。`, 'rose'); }
+      if (i === 0) {
+        const ps = partners();
+        S.comps.push(ev.c);
+        log(`结识${ev.c.name}（${ev.c.orig}），引为知己。`, 'rose');
+        if (ps.length) { ps.forEach(p => { p.fav = Math.max(0, p.fav - 8); }); log(`${ps.map(p => p.name).join('、')}听说此事，几日没给你好脸色。`, 'rose'); }
+      }
       else log(`与${ev.c.name}拱手作别，各奔前程。`);
     },
   },
   reveal: {
-    view: () => { const p = S.comp.name; return { t: '身世', cls: 'red',
-      body: `<p>深夜，你撞见${esc(p)}与一名黑袍人在后山密会。原来${esc(p)}是血煞魔宗安插在正道的暗子，接近你本是奉命行事。</p>
+    view: ev => { const c = S.comps[ev.ci], p = c.name; return { t: '身世', cls: 'red',
+      body: `<div class="meet-pt">${figSvg(c.look, 'rev', true)}</div>
+        <p>深夜，你撞见${esc(p)}与一名黑袍人在后山密会。原来${esc(p)}是血煞魔宗安插在正道的暗子，接近你本是奉命行事。</p>
         <p>黑袍人走后，${esc(p)}在你面前跪下，没有辩解，只说了一句：「后来的那些，都是真的。」</p>`,
       opts: [['护其周全，一同叛出宗门', '从此成为散修，宗门月俸只剩三成，心魔 +20'],
              ['大义灭亲', `亲手了断此事，宗门重赏贡献，心魔 +30`],
              ['放其离去，从此陌路', '道侣离去，心魔 +10']] }; },
     pick(ev, i) {
-      const c = S.comp;
+      const c = S.comps[ev.ci];
+      if (!c) return;
       if (i === 0) {
         S.sect.left = true; c.secret = false; c.fav = 100; addMo(20);
         log(`你带着${c.name}连夜下山，在${SECT}的通缉榜上留下了自己的名字。`, 'rose');
@@ -785,7 +1008,7 @@ const EVENTS = {
         S.sect.contrib += g; S.sect.total += g; addMo(30); promote();
         log(`你亲手斩杀了${c.name}。宗门赏贡献 ${fmt(g)}，此后你再没去过后山。`, 'bad');
       } else {
-        S.comp = null; addMo(10);
+        S.comps.splice(ev.ci, 1); addMo(10);
         log(`你放${c.name}离去。山门外那个背影，终是没有回头。`, 'bad');
       }
     },
@@ -815,7 +1038,7 @@ const EVENTS = {
       if (i === 1) { log('你放下了抵抗，任由心魔吞噬本心。', 'bad'); return endGame('demon'); }
       if (Math.random() < xinmoOdds()) {
         S.mo = 40; S.xp *= .7;
-        log(`${partner() ? partner().name + '在旁护法，' : ''}你苦守灵台七日，终将心魔镇压，修为折损三成。`, 'gold');
+        log(`${partner() ? pNames() + '在旁护法，' : ''}你苦守灵台七日，终将心魔镇压，修为折损三成。`, 'gold');
       } else { log('镇压心魔失败，真元逆流……', 'bad'); endGame('qi'); }
     },
   },
@@ -824,9 +1047,8 @@ const xinmoOdds = () => clamp(.5 + .08 * S.reinc + (partner() ? .15 : 0), .3, .9
 
 /* ---------- 即时反馈 ---------- */
 function snap() {
-  const c = S.comp;
   return { st: S.stones, hb: S.herbs, xp: S.xp, lv: S.lv, ct: S.sect.contrib, mo: S.mo,
-    fav: c && c.alive ? c.fav : null, life: maxLifeY(), age: S.ageM, pw: pwr(), inj: S.injT > 0,
+    favs: alive().map(c => [c.name, c.fav]), life: maxLifeY(), age: S.ageM, pw: pwr(), inj: S.injT > 0,
     gf: S.gongfa, ar: S.array, fa: S.fabao, bp: S.bpill, dp: S.duepill, rk: S.sect.rank, root: S.root,
     bpn: REALMS[Math.min(realm() + 1, REALMS.length - 1)].pill };
 }
@@ -845,7 +1067,10 @@ function deltas(a, b) {
   num(Math.round(b.st - a.st), '灵石');
   num(Math.round(b.hb - a.hb), '灵草', ' 株');
   num(Math.round(b.ct - a.ct), '贡献');
-  if (a.fav !== null && b.fav !== null) num(b.fav - a.fav, '情谊');
+  b.favs.forEach(([n, v]) => {
+    const old = a.favs.find(x => x[0] === n);
+    if (old) num(v - old[1], b.favs.length > 1 ? n + ' 情谊' : '情谊');
+  });
   num(Math.round(b.mo - a.mo), '心魔', '', true, String);
   num(b.life - a.life, '寿元', ' 年', false, String);
   if (b.gf > a.gf) o.push({ t: `功法《${gongfaName(b.gf)}》`, c: 'gold' });
@@ -956,7 +1181,7 @@ function brew(id) {
 
 /* ---------- 天劫 ---------- */
 let trib = null;
-const tribHp = () => 100 + 6 * S.fabao + 40 * S.duepill + (partner() ? 30 : 0);
+const tribHp = () => 100 + 6 * S.fabao + 40 * S.duepill + 30 * partners().length;
 const tribMul = () => (1 - Math.min(.55, .05 * S.fabao)) * (S.root === 'lei' ? .8 : 1) * (1 - Math.min(.15, .03 * S.reinc));
 const tribExpect = () => Math.round(171 * tribMul());
 
@@ -966,7 +1191,7 @@ function startTrib() {
   S.duepill = 0;
   $('#trib').hidden = false;
   const p = partner();
-  $('#trib-n').textContent = p ? `劫云汇聚，${p.name}在百丈外布阵护法……` : '劫云汇聚，方圆千里风云变色……';
+  $('#trib-n').textContent = p ? `劫云汇聚，${pNames()}在百丈外布阵护法……` : '劫云汇聚，方圆千里风云变色……';
   updTrib();
   sizeT();
   setTimeout(strike, 1800);
@@ -980,9 +1205,9 @@ function strike() {
   const dmg = (8 + 2.2 * trib.k) * rnd(.75, 1.25) * trib.mul;
   trib.hp -= dmg;
   let txt = `第${cn(trib.k)}道天雷落下！护体 −${Math.round(dmg)}`, wait = 1300;
-  const p = partner();
-  if (trib.hp <= 0 && p) {
-    p.alive = false; S.sacrificed = true;
+  const p = partners().sort((a, b) => b.fav - a.fav)[0];
+  if (trib.hp <= 0 && p && !S.sacrificed) {
+    p.alive = false; S.sacrificed = true; S.sacName = p.name;
     trib.hp = trib.max * .35;
     txt = `第${cn(trib.k)}道天雷落下，${p.name}飞身挡在你身前，替你承下了这一击！`;
     log(`渡劫时，${p.name}以身替你挡下第${cn(trib.k)}道天雷，形神俱灭。`, 'bad');
@@ -1000,9 +1225,9 @@ function endTrib(ok) {
   $('#trib').hidden = true; trib = null;
   if (!ok) return endGame('trib', { k: cn(k) });
   log('九道天雷尽数扛下，仙光自九天垂落。', 'gold');
-  const p = S.comp;
-  if (S.sacrificed) endGame('alone');
-  else if (partner() && p.fav >= 90) endGame('couple');
+  const deep = partners().filter(c => c.fav >= 90);
+  if (S.sacrificed) endGame('alone', { p: S.sacName });
+  else if (deep.length) endGame('couple', { p: deep.map(c => c.name).join('、'), many: deep.length > 1 });
   else if (S.sect.rank >= 4 && !S.sect.left) endGame('patriarch');
   else endGame('ascend');
 }
@@ -1026,7 +1251,7 @@ function bolt() {
 function endGame(id, ctx) {
   if (S.over) return;
   S.over = id;
-  S.endCtx = Object.assign({ name: S.name, lv: LEVELS[S.lv].name, p: S.comp ? S.comp.name : '' }, ctx || {});
+  S.endCtx = Object.assign({ name: S.name, lv: LEVELS[S.lv].name, p: pNames() || (S.comps[0] ? S.comps[0].name : '') }, ctx || {});
   S.pending = null;
   if (!endings.includes(id)) {
     endings.push(id);
@@ -1066,7 +1291,7 @@ function testRoot(isReroll) {
 
 /* ---------- 弹窗 ---------- */
 function statsHtml() {
-  const p = S.comp;
+  const cl = S.comps.map(c => esc(c.name) + (c.alive ? (c.partner ? '' : '（知己）') : '（已故）')).join('、');
   return `<dl class="kv">
     <dt>道号</dt><dd>${esc(S.name)}</dd>
     <dt>灵根</dt><dd>${root().n} · ${S.els}</dd>
@@ -1074,7 +1299,7 @@ function statsHtml() {
     <dt>战力</dt><dd>${fmt(pwr())}</dd>
     <dt>享年</dt><dd>${ageY()} 岁</dd>
     <dt>宗门</dt><dd>${S.sect.left ? '叛出' + SECT : SECT + RANKS[S.sect.rank]}</dd>
-    <dt>道侣</dt><dd>${p ? esc(p.name) + (p.partner ? '' : '（知己）') + (p.alive ? '' : '（已故）') : '无'}</dd>
+    <dt>道侣</dt><dd>${cl || '无'}</dd>
     <dt>轮回</dt><dd>第${cn(S.reinc + 1)}世</dd></dl>`;
 }
 
@@ -1113,6 +1338,9 @@ function showModal() {
         : `你十六岁那年，叩开了${SECT}的山门。外门执事递来一块测灵石。`}</p>
       <label for="dao-name">道号</label>
       <input id="dao-name" maxlength="6" value="${esc(S.name)}" autocomplete="off">
+      <div class="sexrow"><div class="meet-pt">${figSvg(playerLook(), 'pv', true)}</div>
+        <div class="row"><button class="btn ${S.sex === 'm' ? 'gold' : ''}" data-act="sex" data-v="m" type="button">男修</button>
+        <button class="btn ${S.sex === 'f' ? 'gold' : ''}" data-act="sex" data-v="f" type="button">女修</button></div></div>
       <div class="rootbox" id="rootbox">${R
         ? `<div class="rn" style="color:${S.root === 'wei' ? 'var(--muted)' : R.mul >= 1.8 ? 'var(--gold)' : 'var(--jade)'}">${R.n}</div>
            <div class="rd">${S.els}　·　修炼速度 ×${R.mul}</div><div class="rd">${R.d}</div>`
@@ -1139,7 +1367,7 @@ try { tab = localStorage.getItem('wendao-tab') || 'trip'; } catch (e) {}
 
 function renderStatus() {
   const L = LEVELS[S.lv], q = req(S.lv);
-  $('#s-seal').textContent = REALMS[L.r].n;
+  setHtml('#s-seal', REALMS[L.r].n.split('').join('<br>'));
   $('#s-name').textContent = S.name;
   $('#s-root').textContent = S.root ? `${root().n} · ${S.els}` : '未测灵根';
   $('#s-xp').textContent = `${fmt(S.xp)} / ${fmt(q)}`;
@@ -1158,19 +1386,21 @@ function renderStatus() {
   const chips = [], p = partner();
   if (S.injT > 0) chips.push(`<span class="chip red">负伤 ${Math.ceil(S.injT)} 月</span>`);
   if (S.tideT > 0) chips.push(`<span class="chip jade">灵潮 ${Math.ceil(S.tideT)} 月</span>`);
-  if (p) chips.push(`<span class="chip rose">双修</span>`);
+  if (p) chips.push(`<span class="chip rose">双修${partners().length > 1 ? ' ×' + partners().length : ''}</span>`);
   if (S.bpill) chips.push(`<span class="chip gold">${REALMS[Math.min(L.r + 1, REALMS.length - 1)].pill}</span>`);
   if (S.duepill) chips.push(`<span class="chip gold">渡厄丹 ×${S.duepill}</span>`);
   if (!chips.length) chips.push('<span class="small">气息平稳</span>');
   setHtml('#s-chips', chips.join(''));
   setHtml('#s-kv', `
     <dt>宗门</dt><dd>${S.sect.left ? '散修' : RANKS[S.sect.rank]}</dd>
-    <dt>道侣</dt><dd>${S.comp && S.comp.alive ? esc(S.comp.name) + (S.comp.partner ? '' : '（知己）') : '无'}</dd>
+    <dt>道侣</dt><dd>${alive().length ? alive().map(c => esc(c.name) + (c.partner ? '' : '（知己）')).join('、') : '无'}</dd>
     <dt>功法</dt><dd>${gongfaName(S.gongfa)}</dd>
     <dt>聚灵阵</dt><dd>${S.array ? cn(S.array) + '阶' : '未布置'}</dd>
     <dt>法宝</dt><dd>${fabaoName(S.fabao)}</dd>
     <dt>${S.sect.left ? '散修所得' : '宗门月俸'}</dt><dd>${fmt(stipend())} 灵石</dd>`);
   $('#h-reinc').textContent = `第${cn(S.reinc + 1)}世`;
+  $('#b-sex').textContent = `形象 · ${S.sex === 'f' ? '女修' : '男修'}`;
+  setHtml('#fig', figHtml());
   $('#b-gallery').textContent = `结局 ${endings.length}/${ENDINGS.length}`;
 
   $('#c-realm').textContent = L.name;
@@ -1212,7 +1442,7 @@ function sideTrip() {
       <div class="act"><button class="btn sm" data-act="go" data-i="${i}" type="button">前往</button></div>
       <div class="meta">耗时 ${2 + L.t}–${4 + L.t} 月 · 妖兽战力 ${fmt(shown(locFoe(L)))} · 胜算 ${Math.round(w * 100)}%</div>
       <p>${L.d}</p>${fbHtml('go:' + i)}</div>`;
-  }).join('') + `</div><p class="note" style="margin-top:10px">历练途中不得修炼，岁月照常流逝。${S.lv >= 2 && !S.comp ? '途中或有邂逅。' : ''}${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，此时斗法落败恐有陨落之危。</span>' : ''}</p>`;
+  }).join('') + `</div><p class="note" style="margin-top:10px">历练途中不得修炼，岁月照常流逝。${S.lv >= 2 && alive().length < compCap() ? '途中或有邂逅。' : ''}${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，此时斗法落败恐有陨落之危。</span>' : ''}</p>`;
 }
 
 function sideSect() {
@@ -1241,29 +1471,38 @@ function sideSect() {
 }
 
 function sideComp() {
-  const c = S.comp;
-  if (!c) return `<div class="sum"><p class="note">${S.lv < 2 ? '修为尚浅，一心向道。炼气三层之后，历练与宗门任务途中或有邂逅。' : '尚无知己。历练与宗门任务途中或有邂逅。'}</p>
-    <p class="note">结为道侣后：双修令修炼速度 ×1.3，冲关有人护法，渡劫时护体 +30。道侣情深，飞升时或有不同结局。</p></div>`;
-  if (!c.alive) return `<div class="sum"><span class="comp-name" style="color:var(--muted)">${esc(c.name)}</span>
-    <p class="note">故人已逝。${S.sacrificed ? '那一道天雷，本该落在你身上。' : '后山的风，此后都有些冷。'}</p></div>`;
-  const gc = giftCost(), canWed = !c.partner && c.fav >= 100 && S.lv >= 9;
-  const armed = Date.now() - hermitArm < 3000;
-  return `<div class="sum">
-    <div class="top"><span class="comp-name">${esc(c.name)}</span><span class="chip ${c.partner ? 'rose' : ''}">${c.partner ? '道侣' : '知己'}</span></div>
-    <p class="note">${c.orig} · ${c.trait} · ${LEVELS[c.lv].name}</p>
-    <div class="meter"><div class="lab"><span>情谊</span><b>${c.fav} / 100</b></div><div class="bar fav"><i style="width:${c.fav}%"></i></div></div>
-    <p class="note">${c.partner ? `双修中：修炼速度 ×1.3，冲关成功率 +5%，渡劫护体 +30。情谊不足 90 则难以携手飞升。久不往来，情谊会慢慢变淡。`
-      : c.fav >= 100 ? (S.lv >= 9 ? '情谊已至，可结为道侣。' : '情谊已至，待你筑基后可结为道侣。') : '情谊满一百，且你已筑基，便可结为道侣。'}</p>
-  </div>
-  <div class="list">
-    <div class="item"><h3>赠礼</h3><div class="act"><button class="btn sm rose" data-act="comp" data-k="gift" type="button" ${S.stones < gc ? 'disabled' : ''}>赠礼</button>${costTag(gc)}</div><p>情谊 +6 至 +12。</p>${fbHtml('comp:gift')}</div>
-    <div class="item"><h3>论道</h3><div class="act"><button class="btn sm rose" data-act="comp" data-k="talk" type="button">论道</button><span class="cost">耗时 三月</span></div><p>情谊 +3 至 +6，修为小进，心魔 −10。</p>${fbHtml('comp:talk')}</div>
-    <div class="item"><h3>同游</h3><div class="act"><button class="btn sm rose" data-act="comp" data-k="travel" type="button">同游</button><span class="cost">耗时 六月</span></div><p>情谊 +8 至 +14，沿途采些灵草。</p>${fbHtml('comp:travel')}</div>
-  </div>
-  <div class="btnrow">
-    ${c.partner ? '' : `<button class="btn gold ${canWed ? 'ready' : ''}" data-act="comp" data-k="wed" type="button" ${canWed ? '' : 'disabled'}>结为道侣</button>`}
-    ${c.partner ? `<button class="btn ${armed ? 'red' : 'rose'}" data-act="comp" data-k="hermit" type="button" ${c.fav >= 100 && realm() >= 2 ? '' : 'disabled'}>${armed ? '再点一次：就此归隐，此世终结' : '携手归隐'}<small>${c.fav >= 100 && realm() >= 2 ? '放下仙途，得一结局' : '需金丹以上、情谊一百'}</small></button>` : ''}
-  </div>${fbHtml('comp:end', 'fb-solo')}`;
+  const cap = compCap(), al = alive(), ps = partners();
+  const k = ps.length;
+  const head = `<div class="sum">
+    <div class="top"><span class="small">同行 ${al.length} / ${cap} 人${cap < 3 ? `（${cap < 2 ? '元婴' : '合体'}后可多一位）` : ''}</span>${k ? `<span class="chip rose">双修 ×${pBoost().toFixed(2)}</span>` : ''}</div>
+    <p class="note">${!S.comps.length ? (S.lv < 2 ? '修为尚浅，一心向道。炼气三层之后，历练与宗门任务途中或有邂逅。' : '尚无知己。历练与宗门任务途中或有邂逅。')
+      : al.length < cap && S.lv >= 2 ? '尚有余位，历练与宗门任务途中或有新的邂逅。' : '情谊满一百且已筑基，便可结为道侣。久不往来，情谊会慢慢变淡。'}</p>
+    <p class="note">每位道侣：修炼更快（一位 ×1.3，之后每位再 +0.15），冲关有人护法，渡劫护体 +30。情谊不低于 90 的道侣可携手飞升。另结新欢，旧人会吃味。</p>
+    <p class="note mc-hint">赠礼 情谊 +6~12 · 论道 情谊 +3~6、心魔 −10 · 同游 情谊 +8~14、得灵草</p></div>`;
+  const gc = giftCost();
+  const cards = S.comps.map((c, ci) => {
+    const key = 'comp:' + ci + ':';
+    if (!c.alive) return `<div class="mc dead"><div class="mc-top"><div class="pt">${figSvg(c.look, 'cd' + ci, true)}</div>
+      <div class="mc-info"><span class="mc-name">${esc(c.name)}</span><p class="note">故人已逝。${S.sacName === c.name ? '那一道天雷，本该落在你身上。' : '后山的风，此后都有些冷。'}</p></div></div></div>`;
+    const canWed = !c.partner && c.fav >= 100 && S.lv >= 9;
+    const armed = Date.now() - hermitArm < 3000 && hermitCi === ci;
+    const okH = c.fav >= 100 && realm() >= 2;
+    return `<div class="mc"><div class="mc-top"><div class="pt">${figSvg(c.look, 'cc' + ci, true)}</div>
+      <div class="mc-info"><div class="top"><span class="mc-name">${esc(c.name)}</span><span class="chip ${c.partner ? 'rose' : ''}">${c.partner ? '道侣' : '知己'}</span></div>
+        <p class="note">${c.orig} · ${c.trait} · ${LEVELS[c.lv].name}</p>
+        <div class="meter"><div class="lab"><span>情谊</span><b>${c.fav} / 100</b></div><div class="bar fav"><i style="width:${c.fav}%"></i></div></div></div></div>
+      <div class="mc-acts">
+        <button class="btn sm rose" data-act="comp" data-k="gift" data-ci="${ci}" type="button" ${S.stones < gc ? 'disabled' : ''}>赠礼<small class="${S.stones < gc ? 'no' : ''}">灵石 ${fmt(gc)}</small></button>
+        <button class="btn sm rose" data-act="comp" data-k="talk" data-ci="${ci}" type="button">论道<small>三月</small></button>
+        <button class="btn sm rose" data-act="comp" data-k="travel" data-ci="${ci}" type="button">同游<small>半年</small></button>
+        ${c.partner
+          ? `<button class="btn sm ${armed ? 'red' : 'rose'}" data-act="comp" data-k="hermit" data-ci="${ci}" type="button" ${okH ? '' : 'disabled'}>${armed ? '再点一次：归隐，此世终结' : '携手归隐'}${okH ? '' : '<small>金丹·情谊满</small>'}</button>`
+          : `<button class="btn sm gold ${canWed ? 'ready' : ''}" data-act="comp" data-k="wed" data-ci="${ci}" type="button" ${canWed ? '' : 'disabled'}>结为道侣${canWed ? '' : `<small>${c.fav < 100 ? '情谊满百' : '需筑基'}</small>`}</button>`}
+      </div>
+      ${['gift', 'talk', 'travel', 'wed', 'hermit'].map(a => fbHtml(key + a)).join('')}</div>`;
+  });
+  const order = S.comps.map((c, i) => i).sort((a, b) => (S.comps[b].alive - S.comps[a].alive) || (S.comps[b].partner - S.comps[a].partner));
+  return head + `<div class="list">${order.map(i => cards[i]).join('')}</div>`;
 }
 
 function sideHome() {
@@ -1415,6 +1654,15 @@ function hydrate(d) {
   const f = fresh(null);
   const s = Object.assign(f, d);
   s.sect = Object.assign(fresh(null).sect, d.sect || {});
+  /* 旧存档只有一位道侣：迁移成列表，并补上形象 */
+  if (!Array.isArray(d.comps)) s.comps = d.comp ? [d.comp] : [];
+  delete s.comp;
+  if (s.pending && s.pending.id === 'reveal' && s.pending.ci == null) s.pending.ci = 0;
+  s.comps.forEach(c => {
+    if (!c.sex) c.sex = s.sex === 'f' ? 'm' : 'f';
+    if (!c.look) c.look = genLook(c);
+  });
+  if (s.pending && s.pending.id === 'meet' && !s.pending.c.look) { s.pending.c.sex = s.pending.c.sex || (s.sex === 'f' ? 'm' : 'f'); s.pending.c.look = genLook(s.pending.c); }
   return s;
 }
 function load() {
@@ -1435,7 +1683,8 @@ document.addEventListener('click', e => {
   if (a === 'go') act('go:' + i, () => trip(+i));
   else if (a === 'task') act('task:' + i, () => doTask(+i));
   else if (a === 'ex') act('ex:' + id, () => exchange(id));
-  else if (a === 'comp') act(k === 'wed' || k === 'hermit' ? 'comp:end' : 'comp:' + k, () => compAct(k));
+  else if (a === 'comp') { const ci = +t.dataset.ci; act('comp:' + ci + ':' + k, () => compAct(k, ci)); }
+  else if (a === 'sex') { S.sex = t.dataset.v; save(); showModal(); }
   else if (a === 'up') act('up:' + k, () => upgrade(k));
   else if (a === 'brew') act('brew:' + id, () => brew(id));
   else if (a === 'choose') act('', () => choose(+i));
@@ -1459,7 +1708,8 @@ document.addEventListener('input', e => {
   if (e.target.id === 'dao-name') S.name = e.target.value.trim().slice(0, 6) || S.name;
 });
 $('#b-med').addEventListener('click', meditate);
-$('#b-break').addEventListener('click', () => { act('', breakthrough); renderStatus(); renderSide(); renderLog(); });
+$('#b-sex').addEventListener('click', () => { S.sex = S.sex === 'f' ? 'm' : 'f'; save(); renderStatus(); if (!S.started) showModal(); });
+$('#b-break').addEventListener('click',() => { act('', breakthrough); renderStatus(); renderSide(); renderLog(); });
 disc.addEventListener('pointerdown', e => { e.preventDefault(); meditate(); });
 disc.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); meditate(); } });
 let resetArm = 0;

@@ -161,7 +161,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 
 .side{grid-area:side;display:flex;flex-direction:column;gap:12px}
 .tabs{display:flex;border-bottom:1px solid var(--line);gap:2px;overflow-x:auto}
-.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:6px 10px 8px;cursor:pointer;color:var(--muted);font-size:15px;letter-spacing:.1em;margin-bottom:-1px;white-space:nowrap;flex:none}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:6px 8px 8px;cursor:pointer;color:var(--muted);font-size:15px;letter-spacing:.04em;margin-bottom:-1px;white-space:nowrap;flex:none}
 .tabs button[aria-selected="true"]{color:var(--gold);border-color:var(--gold)}
 .list{display:flex;flex-direction:column;gap:10px}
 .item{background:var(--panel-2);border-radius:8px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
@@ -294,7 +294,8 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
   <section class="panel side" aria-label="行事">
     <div class="tabs" role="tablist">
       <button role="tab" data-tab="trip" type="button">历练</button>
-      <button role="tab" data-tab="sect" type="button">宗门</button>
+      <button role="tab" data-tab="tower" type="button">镇妖塔</button>
+      <button role="tab" data-tab="sect" type="button" id="tab-sect">宗门</button>
       <button role="tab" data-tab="comp" type="button">道侣</button>
       <button role="tab" data-tab="home" type="button">洞府</button>
       <button role="tab" data-tab="pill" type="button">丹房</button>
@@ -315,7 +316,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 <div class="trib" id="trib" hidden>
   <canvas id="tcv"></canvas>
   <div class="trib-ui">
-    <div class="t">九九天劫</div>
+    <div class="t" id="trib-t">九九天劫</div>
     <div class="n" id="trib-n">劫云汇聚……</div>
     <div class="bar"><i id="trib-hp"></i></div>
     <div class="small" id="trib-hpt"></div>
@@ -357,13 +358,21 @@ const REALMS = [
   { n: '炼虚', sub: 4, life: 3200,  base: .18, pill: '凝虚丹' },
   { n: '合体', sub: 4, life: 6400,  base: .16, pill: '合道丹' },
   { n: '大乘', sub: 4, life: 12800, base: .14, pill: '大乘丹' },
-  { n: '渡劫', sub: 1, life: 30000, base: .12, pill: '破界丹' },
+  { n: '渡劫', sub: 1, life: 30000, base: .12, pill: '破界丹', trib: 1, suf: '期' },
+  /* 以下为仙界：渡过九九天劫方可飞升 */
+  { n: '真仙', sub: 4, life: 60000,   base: .12, pill: '' },
+  { n: '玄仙', sub: 4, life: 120000,  base: .12, pill: '玄元丹' },
+  { n: '金仙', sub: 4, life: 250000,  base: .11, pill: '九转金丹' },
+  { n: '太乙金仙', seal: '太乙', sub: 4, life: 500000, base: .10, pill: '太乙神丹' },
+  { n: '大罗金仙', seal: '大罗', sub: 4, life: 1000000, base: .09, pill: '大罗仙丹' },
+  { n: '道祖', sub: 1, life: 3000000, base: .08, pill: '鸿蒙紫气', trib: 1, suf: '' },
 ];
 const SUBS = ['初期', '中期', '后期', '圆满'];
 const LEVELS = [];
 REALMS.forEach((R, r) => {
-  for (let s = 0; s < R.sub; s++) LEVELS.push({ r, s, name: R.n + (r === 0 ? cn(s + 1) + '层' : R.sub === 1 ? '期' : SUBS[s]) });
+  for (let s = 0; s < R.sub; s++) LEVELS.push({ r, s, trib: !!R.trib, name: R.n + (r === 0 ? cn(s + 1) + '层' : R.sub === 1 ? R.suf : SUBS[s]) });
 });
+const ASCEND = REALMS.findIndex(R => R.n === '真仙');
 const TOP = LEVELS.length - 1;
 const ROOTS = [
   { id: 'tian',   n: '天灵根',     els: 1, mul: 3.0, bt: .15, w: 4,  d: '单一属性，纯净无瑕，万中无一。' },
@@ -381,9 +390,13 @@ const LOCS = [
   { n: '东海流波岛', rec: 17, t: 3, d: '海外仙岛，灵脉丰沛，海妖出没无常。', mons: ['蛟龙', '鲛人祭司', '玄甲巨鳌'] },
   { n: '葬仙古墟',   rec: 21, t: 4, d: '上古仙人陨落之地，遗宝与禁制同在。', mons: ['古尸傀儡', '禁制残魂', '血煞魔将'] },
   { n: '九幽裂隙',   rec: 29, t: 5, d: '通往九幽的空间裂缝，域外天魔窥伺。', mons: ['域外天魔', '九幽冥凤', '虚空吞兽'] },
+  /* 仙界：k 为妖物强度系数，b 为收获基数 */
+  { n: '三十三重天', rec: 38, t: 6, k: 2.4, b: 12 * Math.pow(2.4, 9),  d: '仙界外围，罡风如刀，常有叛仙流窜。', mons: ['罡风兽', '叛逃天将', '啸月天狗'] },
+  { n: '天河古战场', rec: 46, t: 7, k: 2.6, b: 12 * Math.pow(2.4, 11), d: '上古仙魔大战之地，残兵断戟间怨魂游荡。', mons: ['仙魔残魂', '天河水怪', '堕仙魔将'] },
+  { n: '混沌海',     rec: 54, t: 8, k: 2.8, b: 12 * Math.pow(2.4, 13), d: '诸天之外的混沌之海，孕育着先天神魔。', mons: ['混沌神魔', '先天凶兽', '鸿蒙古兽'] },
 ];
-const GONGFA = ['粗浅吐纳术', '长春功', '青元诀', '太乙玄功', '大衍诀', '紫府天书', '混元道经', '太上感应篇', '鸿蒙紫气诀'];
-const FABAO = ['赤手空拳', '桃木剑', '青锋剑', '玄铁重剑', '紫电锤', '冰魄神光', '青竹蜂云剑', '玄天斩灵剑', '番天印', '混沌钟'];
+const GONGFA = ['粗浅吐纳术', '长春功', '青元诀', '太乙玄功', '大衍诀', '紫府天书', '混元道经', '太上感应篇', '鸿蒙紫气诀', '太清玄元经', '大罗洞观真经', '混元道果'];
+const FABAO = ['赤手空拳', '桃木剑', '青锋剑', '玄铁重剑', '紫电锤', '冰魄神光', '青竹蜂云剑', '玄天斩灵剑', '番天印', '混沌钟', '诛仙剑阵', '太极图', '盘古幡'];
 const SURN = ['林', '韩', '萧', '叶', '沈', '陆', '顾', '白', '秦', '苏', '柳', '云', '楚', '江', '厉', '慕容', '上官'];
 const GIVEN = ['青玄', '长歌', '无尘', '清和', '若虚', '知秋', '守拙', '听澜', '飞羽', '砚舟', '明月', '不语'];
 const randName = () => pick(SURN) + pick(GIVEN);
@@ -402,6 +415,27 @@ const TASKS = [
   { n: '追查魔修',   d: '有魔修在凡人城池作祟，需查明除之。', fight: 1, m: 5, c: 2.4, s: 1.5, h: 0, mo: -5 },
   { n: '探查秘境',   d: '新现世的秘境入口需人探路，福祸难料。', fight: 1.1, m: 6, c: 2.2, s: 1, h: 3, x: .15 },
 ];
+const HEAVEN_TASKS = [
+  { n: '看守蟠桃园', d: '替王母看守蟠桃园，提防偷桃的猴精。', fight: 0, m: 3, c: .8, s: .5, h: 2 },
+  { n: '兜率宫看火', d: '为老君看守八卦炉，炉火纯青，耳濡目染也有所得。', fight: 0, m: 2, c: .6, s: .3, h: 1, x: .05 },
+  { n: '镇守南天门', d: '轮值镇守南天门，枯燥但稳妥。', fight: 0, m: 8, c: 1.6, s: 1, h: 0 },
+  { n: '下界降妖',   d: '下界有大妖作乱，奉旨前去收服。', fight: .75, m: 4, c: 1.3, s: 1.2, h: 1 },
+  { n: '押送天材',   d: '押送天库宝物渡过天河，提防劫道的散仙。', fight: .85, m: 6, c: 1.8, s: 1.8, h: 0 },
+  { n: '缉拿叛仙',   d: '有仙人私逃下界为祸人间，奉命缉拿归案。', fight: 1, m: 5, c: 2.4, s: 1.5, h: 0, mo: -5 },
+  { n: '探查混沌',   d: '混沌海中浮出一处新秘境，需人探路，福祸难料。', fight: 1.1, m: 6, c: 2.2, s: 1, h: 3, x: .15 },
+];
+/* 势力：下界青云宗，飞升后可受封入天庭 */
+const FACTIONS = [
+  { n: SECT, tab: '宗门', ranks: RANKS, total: RANK_TOTAL, lv: RANK_LV, tasks: TASKS,
+    place: SECT + '山下', near: SECT + '附近', wed: SECT + '观星台', elder: '宗门长老', promo: '宗门议定，晋你为',
+    st: '灵石一袋', hb: ['灵草五株', '药园所产，品相上佳。'], gf: ['藏经阁参悟', '入藏经阁闭关'], po: '宗门秘藏', xs: ['洗髓伐脉', '宗门灵池'],
+    top: '你已是宗门地位最尊者。以此身份证道，可得「宗门老祖」结局。' },
+  { n: '天庭', tab: '天庭', ranks: ['天兵', '天将', '星君', '天王', '帝君'], total: [0, 15000, 80000, 300000, 1200000], lv: [38, 42, 46, 50, 54], tasks: HEAVEN_TASKS,
+    place: '南天门外', near: '天河之畔', wed: '瑶池畔', elder: '天庭仙官', promo: '天庭降旨，册封你为',
+    st: '天库灵石', hb: ['蟠桃园仙草', '蟠桃园所产，沾着仙露。'], gf: ['紫霄宫听道', '入紫霄宫听道'], po: '兜率宫所炼', xs: ['瑶池洗髓', '瑶池仙水'],
+    top: '你已位列帝君。以此身份证道，可得「天庭帝君」结局。' },
+];
+const F = () => FACTIONS[S.sect.f || 0];
 
 /* 道侣 */
 const C_GIVEN = ['清霜', '映雪', '怀瑾', '听雨', '南星', '如晦', '照夜', '惊鸿', '停云', '疏桐', '望舒', '扶摇', '晚晴', '寒江'];
@@ -416,10 +450,11 @@ const MEETS = [
 
 /* 结局 */
 const ENDINGS = [
-  { id: 'ascend',    n: '白日飞升', hint: '渡过九九天劫' },
-  { id: 'couple',    n: '神仙眷侣', hint: '与情深的道侣一同飞升' },
-  { id: 'alone',     n: '孤身飞升', hint: '有人替你挡下了天雷' },
-  { id: 'patriarch', n: '宗门老祖', hint: '以太上长老之身飞升' },
+  { id: 'ascend',    n: '以身合道', hint: '渡过鸿蒙道劫，证道成祖' },
+  { id: 'couple',    n: '神仙眷侣', hint: '与情深的道侣一同证道' },
+  { id: 'alone',     n: '孤身证道', hint: '有人替你挡下了天雷' },
+  { id: 'patriarch', n: '宗门老祖', hint: '下界官至太上长老，此后证道' },
+  { id: 'emperor',   n: '天庭帝君', hint: '以帝君之身证道' },
   { id: 'hermit',    n: '隐世眷侣', hint: '放下长生，与道侣归隐' },
   { id: 'age',       n: '寿尽坐化', hint: '寿元耗尽' },
   { id: 'trib',      n: '身死道消', hint: '倒在天劫之下' },
@@ -428,10 +463,11 @@ const ENDINGS = [
   { id: 'demon',     n: '魔道至尊', hint: '任由心魔吞噬本心' },
 ];
 const END_TEXT = {
-  ascend: c => `${c.name}历经九九天劫，肉身重塑，破碎虚空而去。此界从此流传着你的名号。`,
-  couple: c => `最后一道天雷散去，仙光垂落。你回身握住${c.p}的手，${c.many ? '一行人' : '二人'}并肩踏入仙门。后世话本里，这段道缘被写了一千遍。`,
-  alone: c => `你渡过了天劫，${c.p}却化作漫天光点。仙门在前，你回望人间良久，独自一人走了进去。`,
-  patriarch: c => `飞升那日，${SECT}上下焚香相送。你的画像被供奉在祖师堂正中，受后世弟子万年香火。`,
+  ascend: c => `${c.name}渡过鸿蒙道劫，以身合道，成就道祖之位。诸天万界，从此皆传你的道统。`,
+  couple: c => `最后一道劫雷散去，大道垂青。你回身握住${c.p}的手，${c.many ? '一行人' : '二人'}并肩合道。后世话本里，这段道缘被写了一千遍。`,
+  alone: c => `你证得大道，${c.p}却早已化作漫天光点。道祖之位在前，你回望来路良久，独自一人坐了上去。`,
+  patriarch: c => `证道那日，下界${SECT}上下焚香遥拜。你的画像被供奉在祖师堂正中，受后世弟子万年香火。`,
+  emperor: c => `证道那日，凌霄宝殿钟鼓齐鸣，诸天仙神列班相送。${c.name}之名刻入帝君谱，与日月同辉。`,
   hermit: c => `你与${c.p}辞去一切，在一处无名山谷结庐而居。春种灵田，秋看落叶。长生未必有，此生已足够。`,
   age: c => `${c.name}终究没能跨过寿元大限，于${c.lv}坐化。洞府石门缓缓合上，再无人开启。`,
   trib: c => `第${c.k}道天雷落下，护体崩碎，肉身化为飞灰，唯余一缕真灵坠入轮回。`,
@@ -439,7 +475,7 @@ const END_TEXT = {
   qi: c => `你强行镇压心魔，却被反噬。经脉寸断，真元逆流，${c.name}就此疯癫而终。`,
   demon: c => `你不再抵抗。心魔与你合而为一，修为一夜暴涨。百年之后，魔尊${c.name}之名令正道闻风丧胆。`,
 };
-const GOOD_END = ['ascend', 'couple', 'alone', 'patriarch', 'hermit'];
+const GOOD_END = ['ascend', 'couple', 'alone', 'patriarch', 'emperor', 'hermit'];
 
 /* ---------- 状态 ---------- */
 function fresh(prev) {
@@ -450,8 +486,9 @@ function fresh(prev) {
     bpill: 0, duepill: 0, injT: 0, tideT: 0, evCD: 40, mo: 0,
     reinc: prev ? prev.reinc + 1 : 0, log: [], started: false, over: '', endCtx: null, warned: -1,
     trips: 0, clicks: 0, rerolls: 1, xisui: false, sacrificed: false,
-    sect: { contrib: 0, total: 0, rank: 0, left: false, tasks: [], refM: 36, tourneyM: 60 },
+    sect: { f: 0, contrib: 0, total: 0, rank: 0, left: false, free: false, elder: false, tasks: [], refM: 36, tourneyM: 60 },
     comps: [], pending: null, sex: prev ? prev.sex : 'm', sacName: '',
+    tower: 0, zhanyi: 0, t: Date.now(),
   };
 }
 let S = fresh(null);
@@ -474,7 +511,7 @@ const compCap = () => realm() >= 6 ? 3 : realm() >= 3 ? 2 : 1;
 const pBoost = () => { const k = partners().length; return k ? 1.15 + .15 * k : 1; };
 const stipend = () => .12 * Math.pow(2.1, realm()) * (S.sect.left ? .3 : 1 + .5 * S.sect.rank);
 function rate(noBuff) {
-  let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * pBoost();
+  let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * pBoost() * (S.sect.free ? 1.2 : 1);
   if (!noBuff) r *= (S.injT > 0 ? .5 : 1) * (S.tideT > 0 ? 2 : 1);
   return r;
 }
@@ -484,14 +521,14 @@ const costGongfa = () => Math.round(25 * Math.pow(1.85, S.gongfa));
 const costArray = () => Math.round(40 * Math.pow(1.95, S.array));
 const costFabao = () => Math.round(35 * Math.pow(2.0, S.fabao));
 const nextMajor = () => S.lv < TOP && LEVELS[S.lv + 1].r !== realm();
-const power = () => (S.lv + 1) * (1 + .15 * S.fabao) * (S.injT > 0 ? .7 : 1);
+const power = () => (S.lv + 1) * (1 + .15 * S.fabao) * (1 + .1 * partners().length) * (S.injT > 0 ? .7 : 1);
 const odds = (P, E) => clamp(P * P / (P * P + E * E), .05, .97);
 /* 战力：把内部的斗法强度 ×100 显示给玩家 */
 const pwr = () => Math.round(power() * 100);
 const shown = E => Math.round(E * 100);
 
 function chance() {
-  if (S.lv >= TOP) return 0;
+  if (LEVELS[S.lv].trib) return 0;
   if (!nextMajor()) return .92 - .02 * realm();
   const R = REALMS[realm() + 1];
   return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? .35 : 0) + (partners().length ? .03 + .02 * partners().length : 0) - S.mo / 1000, .05, .95);
@@ -508,10 +545,13 @@ function addMo(n) { S.mo = clamp(S.mo + n, 0, 100); }
 
 /* ---------- 修炼 ---------- */
 function gainXp(n) { S.xp = Math.min(req(S.lv), S.xp + n); }
-const busy = () => !S.started || S.over || trib || S.pending;
+const busy = () => !S.started || S.over || trib || S.pending || away;
 
-function tick(dt) {
+/* 节奏：现实一秒 = 修仙 MPS 月。只挂机不点击，一世约 70~100 分钟 */
+const MPS = .3;
+function tick(sec) {
   if (busy()) return;
+  const dt = sec * MPS;
   S.ageM += dt;
   gainXp(rate() * dt);
   S.stones += stipend() * dt;
@@ -555,7 +595,7 @@ function checkLife() {
 function worldEvent() {
   const ps = partners(), p = ps.length ? pick(ps) : null, sc = S.sect;
   const spy = ps.find(c => c.secret && !c.revealed && c.sinceM > 48);
-  if (spy && !sc.left && Math.random() < .5) {
+  if (spy && !sc.left && !sc.f && Math.random() < .5) {
     spy.revealed = true; S.pending = { id: 'reveal', ci: S.comps.indexOf(spy) }; return;
   }
   if (!sc.left && S.lv >= 2 && sc.tourneyM <= 0 && Math.random() < .6) {
@@ -569,7 +609,7 @@ function worldEvent() {
     if (Math.random() < resist) { addMo(-5); log('心魔来袭，幻象丛生。你道心坚定，将其一剑斩灭。', 'good'); }
     else { S.xp *= .9; addMo(15); log('心魔侵扰，气血翻涌，修为折损一成，心魔又深了几分。', 'bad'); }
   }
-  else if (roll < .8) { const s = Math.round(stipend() * 30 + 5); S.stones += s; log(`${sc.left ? '旧日故交' : '宗门长老'}送来灵石 ${fmt(s)}。`, 'good'); }
+  else if (roll < .8) { const s = Math.round(stipend() * 30 + 5); S.stones += s; log(`${sc.left ? (sc.f ? '仙界道友' : '旧日故交') : F().elder}送来灵石 ${fmt(s)}。`, 'good'); }
   else if (roll < .9 && p) { const x = rate(true) * 20; gainXp(x); addMo(-6); log(`与${p.name}月下双修，心神安宁，修为精进 ${fmt(x)}。`, 'rose'); }
   else { const h = 1 + realm(); S.herbs += h; log(`洞府外灵田成熟，收得灵草 ${h} 株。`, 'good'); }
 }
@@ -584,7 +624,7 @@ function meditate() {
 
 function breakthrough() {
   if (busy() || S.xp < req(S.lv)) return;
-  if (S.lv >= TOP) return startTrib();
+  if (LEVELS[S.lv].trib) return startTrib(S.lv === TOP);
   const major = nextMajor(), p = chance(), from = LEVELS[S.lv].name;
   const usedPill = major && S.bpill > 0;
   if (usedPill) S.bpill = 0;
@@ -627,7 +667,7 @@ function defeat(place, mon, head) {
 }
 
 /* ---------- 历练 ---------- */
-const locFoe = L => (L.rec + 1) * (.6 + .45 * L.t);
+const locFoe = L => (L.rec + 1) * (L.k || .6 + .45 * L.t);
 const winChance = L => odds(power(), locFoe(L));
 
 function trip(i) {
@@ -635,7 +675,7 @@ function trip(i) {
   if (busy() || S.lv < L.rec) return;
   const m = ri(2, 4) + L.t;
   S.ageM += m; S.trips++;
-  const base = 10 * Math.pow(3, L.t) * (1 + .08 * Math.max(0, S.lv - L.rec));
+  const base = (L.b || 10 * Math.pow(3, L.t)) * (1 + .08 * Math.max(0, S.lv - L.rec));
   const head = `【${L.n}】历练${cn(m)}月，`;
   const r = Math.random() * 100;
   if (r < 2) {
@@ -679,22 +719,22 @@ function trip(i) {
 /* ---------- 宗门 ---------- */
 const sectMon = () => pick(LOCS.filter(L => L.rec <= S.lv).pop().mons);
 function genTask() {
-  const i = Math.floor(Math.random() * TASKS.length), T = TASKS[i], r = realm(), k = rnd(.85, 1.2);
+  const TS = F().tasks, i = Math.floor(Math.random() * TS.length), T = TS[i], r = realm(), k = rnd(.85, 1.2);
   return { i, c: Math.round(10 * Math.pow(1.8, r) * T.c * k), s: Math.round(12 * Math.pow(2.4, r) * T.s * k), h: T.h * (1 + r), mon: sectMon() };
 }
 function genBoard() { S.sect.tasks = [genTask(), genTask(), genTask()]; }
-const taskFoe = d => (S.lv + 1) * d * (1 + .18 * realm());
+const taskFoe = d => (S.lv + 1) * d * (1 + .18 * Math.min(realm(), 8));
 const taskWin = d => odds(power(), taskFoe(d));
 
 function doTask(j) {
   const sc = S.sect, t = sc.tasks[j];
   if (busy() || sc.left || !t) return;
-  const T = TASKS[t.i];
+  const T = F().tasks[t.i];
   S.ageM += T.m;
-  const head = `【宗门任务·${T.n}】历时${cn(T.m)}月，`;
+  const head = `【${sc.f ? '天庭差事' : '宗门任务'}·${T.n}】历时${cn(T.m)}月，`;
   sc.tasks[j] = genTask();
   if (T.fight && Math.random() >= taskWin(T.fight)) {
-    if (defeat(SECT + '附近', t.mon, head)) return;
+    if (defeat(F().near, t.mon, head)) return;
     log(head + `与${t.mon}交手落败，负伤而归，任务未成。`, 'bad');
   } else {
     sc.contrib += t.c; sc.total += t.c; S.stones += t.s; S.herbs += t.h;
@@ -703,7 +743,7 @@ function doTask(j) {
     log(head + (T.fight ? `斩除${t.mon}，` : '') + `得贡献 ${fmt(t.c)}、灵石 ${fmt(t.s)}${t.h ? '、灵草 ' + t.h + ' 株' : ''}。`, 'good');
     promote();
   }
-  maybeMeet(SECT + '山下', .06);
+  maybeMeet(F().place, .06);
   checkLife();
   save();
 }
@@ -711,23 +751,25 @@ function doTask(j) {
 function promote() {
   const sc = S.sect;
   if (sc.left) return;
-  while (sc.rank < 4 && sc.total >= RANK_TOTAL[sc.rank + 1] && S.lv >= RANK_LV[sc.rank + 1]) {
+  const A = F();
+  while (sc.rank < 4 && sc.total >= A.total[sc.rank + 1] && S.lv >= A.lv[sc.rank + 1]) {
     sc.rank++;
-    log(`宗门议定，晋你为${RANKS[sc.rank]}，月俸随之提升。`, 'gold');
+    if (!sc.f && sc.rank >= 4) sc.elder = true;
+    log(`${A.promo}${A.ranks[sc.rank]}，月俸随之提升。`, 'gold');
   }
 }
 
 function treasury() {
-  const r = realm(), sc = S.sect, out = [];
-  out.push({ id: 'st', n: '灵石一袋', d: `领取灵石 ${fmt(15 * Math.pow(2.4, r))}。`, rk: 0, c: Math.round(10 * Math.pow(1.8, r)), ok: true });
-  out.push({ id: 'hb', n: '灵草五株', d: '药园所产，品相上佳。', rk: 0, c: Math.round(12 * Math.pow(1.8, r)), ok: true });
-  out.push({ id: 'gf', n: '藏经阁参悟', d: `入藏经阁闭关，功法精进一重。`, rk: 1, c: Math.round(50 * Math.pow(1.75, S.gongfa)), ok: true });
-  if (nextMajor()) {
+  const r = realm(), A = F(), out = [];
+  out.push({ id: 'st', n: A.st, d: `领取灵石 ${fmt(15 * Math.pow(2.4, r))}。`, rk: 0, c: Math.round(10 * Math.pow(1.8, r)), ok: true });
+  out.push({ id: 'hb', n: A.hb[0], d: A.hb[1], rk: 0, c: Math.round(12 * Math.pow(1.8, r)), ok: true });
+  out.push({ id: 'gf', n: A.gf[0], d: `${A.gf[1]}，功法精进一重。`, rk: 1, c: Math.round(50 * Math.pow(1.75, S.gongfa)), ok: true });
+  if (nextMajor() && !LEVELS[S.lv].trib) {
     const R = r + 1;
-    out.push({ id: 'po', n: REALMS[R].pill, d: `宗门秘藏，冲击${REALMS[R].n}成功率 +35%。`, rk: 2, c: Math.round(60 * Math.pow(2.2, R)), ok: !S.bpill, why: '已备好' });
+    out.push({ id: 'po', n: REALMS[R].pill, d: `${A.po}，冲击${REALMS[R].n}成功率 +35%。`, rk: 2, c: Math.round(60 * Math.pow(2.2, R)), ok: !S.bpill, why: '已备好' });
   }
   const idx = ROOTS.findIndex(x => x.id === S.root);
-  out.push({ id: 'xs', n: '洗髓伐脉', d: '以宗门灵池洗练经脉，灵根提升一等（至多双灵根），每世一次。', rk: 3,
+  out.push({ id: 'xs', n: A.xs[0], d: `以${A.xs[1]}洗练经脉，灵根提升一等（至多双灵根），每世一次。`, rk: 3,
     c: Math.round(400 * Math.pow(1.8, r)), ok: !S.xisui && idx >= 3, why: S.xisui ? '此世已用' : '灵根已臻上品' });
   return out;
 }
@@ -741,13 +783,13 @@ function exchange(id) {
   const r = realm();
   if (id === 'st') { const s = Math.round(15 * Math.pow(2.4, r)); S.stones += s; log(`以贡献兑得灵石 ${fmt(s)}。`); }
   if (id === 'hb') { S.herbs += 5; log('以贡献兑得灵草五株。'); }
-  if (id === 'gf') { S.gongfa++; log(`于藏经阁闭关参悟，功法精进至《${gongfaName(S.gongfa)}》。`, 'good'); }
-  if (id === 'po') { S.bpill = 1; log(`自宗门宝库领得${it.n}一枚。`, 'gold'); }
+  if (id === 'gf') { S.gongfa++; log(`${F().gf[1]}，功法精进至《${gongfaName(S.gongfa)}》。`, 'good'); }
+  if (id === 'po') { S.bpill = 1; log(`自${sc.f ? '天库' : '宗门宝库'}领得${it.n}一枚。`, 'gold'); }
   if (id === 'xs') {
     const idx = ROOTS.findIndex(x => x.id === S.root), R = ROOTS[idx - 1];
     S.root = R.id; S.xisui = true;
     S.els = S.els.slice(0, R.els) || S.els;
-    log(`于宗门灵池洗髓伐脉七七四十九日，灵根蜕变为${R.n}（${S.els}）！`, 'gold');
+    log(`于${F().xs[1]}中洗髓伐脉七七四十九日，灵根蜕变为${R.n}（${S.els}）！`, 'gold');
   }
   save();
 }
@@ -788,7 +830,7 @@ function compAct(a, ci) {
   } else if (a === 'wed') {
     if (c.partner || c.fav < 100 || S.lv < 9) return;
     c.partner = true; c.sinceM = 0; c.lv = Math.max(c.lv, S.lv - 1);
-    log(`你与${c.name}于${S.sect.left ? '荒山' : SECT + '观星台'}焚香立誓，结为道侣。自此同修共进，生死相随。`, 'gold');
+    log(`你与${c.name}于${S.sect.left ? (S.sect.f ? '云海之上' : '荒山') : F().wed}焚香立誓，结为道侣。自此同修共进，生死相随。`, 'gold');
   } else if (a === 'hermit') {
     if (!c.partner || c.fav < 100 || realm() < 2) return;
     if (Date.now() - hermitArm > 3000 || hermitCi !== ci) { hermitArm = Date.now(); hermitCi = ci; return; }
@@ -813,6 +855,12 @@ const REALM_LOOK = [
   { robe: '#f5ecd2', trim: '#c4952a', inner: '#fffaf0', glow: '#f0c95a' }, // 合体·金纹
   { robe: '#fbfaf6', trim: '#d1aa38', inner: '#ffffff', glow: '#ffe08a' }, // 大乘·素白鎏金
   { robe: '#3b2c5e', trim: '#e2c56a', inner: '#efe7ff', glow: '#c9b8ff' }, // 渡劫·紫金雷纹
+  { robe: '#e6f1fc', trim: '#5b8fd9', inner: '#ffffff', glow: '#bfe3ff' }, // 真仙·云纹天青
+  { robe: '#22263a', trim: '#9b8cff', inner: '#e8e4ff', glow: '#a99bff' }, // 玄仙·玄色
+  { robe: '#fff1cc', trim: '#d99a1e', inner: '#fffdf5', glow: '#ffd76a' }, // 金仙·金身
+  { robe: '#eafcf3', trim: '#2fa37a', inner: '#ffffff', glow: '#8ef0c6' }, // 太乙·青碧
+  { robe: '#2a1c3f', trim: '#f0cf6a', inner: '#fff6dd', glow: '#ffcf6a' }, // 大罗·紫金
+  { robe: '#ffffff', trim: '#8f7ae0', inner: '#ffffff', glow: '#f2ecff' }, // 道祖·素白鸿蒙
 ];
 function playerLook() {
   const r = S.started || S.lv ? realm() : 0, f = S.sex === 'f', R = REALM_LOOK[r];
@@ -825,11 +873,11 @@ function playerLook() {
   else L.head.push([f ? 'buyao' : 'guan', r >= 6 ? '#e2c56a' : r === 5 ? '#7fc8a9' : '#cfd6e2']);
   if (r === 1 || r === 2) L.back.push('sword1');
   if (r >= 3) L.back.push('silk');
-  if (r === 4 || r === 8) L.back.push('swords');
+  if (r === 4 || r === 8 || r === 11 || r === 13) L.back.push('swords');
   if (r >= 5) L.back.push('halo');
   if (r >= 6) L.back.push('aura');
-  if (r === 7) L.back.push('rays');
-  if (r === 8) L.back.push('bolt');
+  if (r === 7 || r >= 9) L.back.push('rays');
+  if (r === 8 || r === 14) L.back.push('bolt');
   return L;
 }
 /* 道侣按出身定装束与配饰 */
@@ -1001,7 +1049,7 @@ const EVENTS = {
       const c = S.comps[ev.ci];
       if (!c) return;
       if (i === 0) {
-        S.sect.left = true; c.secret = false; c.fav = 100; addMo(20);
+        S.sect.left = true; S.sect.elder = false; c.secret = false; c.fav = 100; addMo(20);
         log(`你带着${c.name}连夜下山，在${SECT}的通缉榜上留下了自己的名字。`, 'rose');
       } else if (i === 1) {
         c.alive = false; const g = Math.round(40 * Math.pow(1.8, realm()));
@@ -1014,20 +1062,37 @@ const EVENTS = {
     },
   },
   tourney: {
-    view: () => ({ t: '宗门大比', cls: '',
-      body: `<p>十年一度的${SECT}大比开锣，同辈弟子济济一堂。头名可得宗主亲赐法宝一件，另有重赏。</p>`,
+    view: () => ({ t: S.sect.f ? '蟠桃盛会' : '宗门大比', cls: '',
+      body: S.sect.f ? '<p>瑶池蟠桃盛会开宴，群仙登台斗法助兴。魁首可得天帝亲赐法宝一件，另有重赏。</p>'
+        : `<p>十年一度的${SECT}大比开锣，同辈弟子济济一堂。头名可得宗主亲赐法宝一件，另有重赏。</p>`,
       opts: [['登台比斗', `你的战力 ${fmt(pwr())}，对手约 ${fmt(shown(taskFoe(1.05)))}，胜算约 ${Math.round(taskWin(1.05) * 100)}%`],['台下观战', '观摩他人斗法，修为略有精进']] }),
     pick(ev, i) {
+      const hv = S.sect.f, nm = hv ? '蟠桃盛会' : '宗门大比';
       if (i === 1) { gainXp(req(S.lv) * .06); log('你在台下观战，看出了几处门道。'); return; }
       if (Math.random() < taskWin(1.05)) {
         const g = Math.round(30 * Math.pow(1.8, realm())), s = Math.round(25 * Math.pow(2.4, realm()));
         S.sect.contrib += g; S.sect.total += g; S.stones += s; S.fabao++;
-        log(`宗门大比力压群雄夺得头名！宗主亲赐${fabaoName(S.fabao)}，另赏贡献 ${fmt(g)}、灵石 ${fmt(s)}。`, 'gold');
+        log(`${nm}上力压群雄夺得魁首！${hv ? '天帝' : '宗主'}亲赐${fabaoName(S.fabao)}，另赏贡献 ${fmt(g)}、灵石 ${fmt(s)}。`, 'gold');
         promote();
       } else {
         S.injT = Math.max(S.injT, 40);
-        log('宗门大比中惜败，负了些轻伤。', 'bad');
+        log(`${nm}中惜败，负了些轻伤。`, 'bad');
       }
+    },
+  },
+  /* 飞升后：受封入天庭，或做逍遥散仙 */
+  heaven: {
+    view: () => { const sc = S.sect; return { t: '天庭册封', cls: '',
+      body: `<p>你初登仙界，云头便落下一员金甲天将，手捧玉旨：「${esc(S.name)}渡劫飞升，天帝有旨，封为天兵，入天庭听用。」</p>
+        <p class="m">${sc.left ? `你在下界叛出了${SECT}，天庭却不问下界旧账。` : `你在下界官至${RANKS[sc.rank]}${sc.rank ? '，功绩可折算为天庭贡献' : ''}。`}</p>`,
+      opts: [['受封入天庭', '领天庭差事、兑天库宝物，官阶越高月俸越厚。官至帝君后证道，另有结局'],
+             ['做逍遥散仙', '不受天规约束，修炼速度永久 +20%；但月俸只剩三成，也没有天庭差事']] }; },
+    pick(ev, i) {
+      const sc = S.sect, bonus = sc.left ? 0 : Math.round(3000 * sc.rank);
+      Object.assign(sc, { f: 1, contrib: i ? 0 : bonus, total: 0, rank: 0, left: !!i, free: !!i, refM: 36, tourneyM: 60 });
+      genBoard();
+      if (i) log('你婉拒了册封，从此做个逍遥散仙，天规管不到你头上。', 'gold');
+      else log(`你接下玉旨，入天庭为天兵。${bonus ? `下界功绩折算贡献 ${fmt(bonus)}。` : ''}`, 'gold');
     },
   },
   xinmo: {
@@ -1049,7 +1114,7 @@ const xinmoOdds = () => clamp(.5 + .08 * S.reinc + (partner() ? .15 : 0), .3, .9
 function snap() {
   return { st: S.stones, hb: S.herbs, xp: S.xp, lv: S.lv, ct: S.sect.contrib, mo: S.mo,
     favs: alive().map(c => [c.name, c.fav]), life: maxLifeY(), age: S.ageM, pw: pwr(), inj: S.injT > 0,
-    gf: S.gongfa, ar: S.array, fa: S.fabao, bp: S.bpill, dp: S.duepill, rk: S.sect.rank, root: S.root,
+    gf: S.gongfa, ar: S.array, fa: S.fabao, bp: S.bpill, dp: S.duepill, rk: S.sect.rank, root: S.root, tw: S.tower, zy: S.zhanyi,
     bpn: REALMS[Math.min(realm() + 1, REALMS.length - 1)].pill };
 }
 const sgn = (d, f = fmt) => (d > 0 ? '+' : '−') + f(Math.abs(d));
@@ -1061,7 +1126,7 @@ function deltas(a, b) {
   const m = Math.round(b.age - a.age);
   if (m > 0) o.push({ t: `耗时 ${m} 月`, c: 't' });
   if (b.lv > a.lv) o.push({ t: `境界 → ${LEVELS[b.lv].name}`, c: 'gold' });
-  if (b.rk > a.rk) o.push({ t: `晋升 ${RANKS[b.rk]}`, c: 'gold' });
+  if (b.rk > a.rk) o.push({ t: `晋升 ${F().ranks[b.rk]}`, c: 'gold' });
   if (b.root !== a.root) o.push({ t: `灵根 → ${root().n}`, c: 'gold' });
   if (b.lv === a.lv) { const d = b.xp - a.xp; if (Math.abs(d) >= .05) num(d, '修为'); }
   num(Math.round(b.st - a.st), '灵石');
@@ -1080,6 +1145,9 @@ function deltas(a, b) {
   if (b.bp > a.bp) o.push({ t: `${b.bpn} +1`, c: 'gold' });
   if (b.bp < a.bp) o.push({ t: `耗去 ${a.bpn}`, c: 't' });
   if (b.dp > a.dp) o.push({ t: `渡厄丹 ×${b.dp}`, c: 'gold' });
+  if (b.tw > a.tw) o.push({ t: `镇妖塔 第${b.tw}层`, c: 'gold' });
+  if (b.zy > a.zy) o.push({ t: '战意丹 +1', c: 'gold' });
+  if (b.zy < a.zy) o.push({ t: '耗去 战意丹', c: 't' });
   if (!a.inj && b.inj) o.push({ t: '负伤', c: 'down' });
   if (a.inj && !b.inj) o.push({ t: '伤愈', c: 'up' });
   return o;
@@ -1153,15 +1221,18 @@ function pills() {
   const ys = Math.max(15, Math.round(REALMS[r].life * .08));
   out.push({ id: 'yan', n: '延寿丹', d: `增寿 ${ys} 年。丹毒累积，每一大境界至多服三枚（已服 ${S.yanshou}）。`,
     h: 6 + 4 * r, s: Math.round(30 * Math.pow(2.4, r)), ok: S.yanshou < 3, why: '丹毒已满', ys });
-  if (nextMajor()) {
+  if (nextMajor() && !LEVELS[S.lv].trib) {
     const R = r + 1;
     out.push({ id: 'po', n: REALMS[R].pill, d: `冲击${REALMS[R].n}时成功率 +35%，无论成败皆会耗去。`,
       h: 3 + 3 * R, s: Math.round(40 * Math.pow(2.6, R - 1)), ok: !S.bpill, why: '已备好一枚' });
   }
   if (r >= 4) {
-    out.push({ id: 'due', n: '渡厄丹', d: `渡天劫时护体 +40。至多备三枚（已备 ${S.duepill}）。`,
-      h: 30, s: 6000, ok: S.duepill < 3, why: '已备足' });
+    const up = Math.max(0, r - 8);
+    out.push({ id: 'due', n: '渡厄丹', d: `渡天劫时护体 +40，渡劫后耗尽。至多备三枚（已备 ${S.duepill}）。`,
+      h: 30 * (1 + up), s: Math.round(6000 * Math.pow(2.4, up)), ok: S.duepill < 3, why: '已备足' });
   }
+  out.push({ id: 'zhan', n: '战意丹', d: '下一次挑战镇妖塔时战力 ×1.3，无论胜负皆会耗去。',
+    h: 2 + r, s: Math.round(10 * Math.pow(1.9, r)), ok: !S.zhanyi, why: '已备好一枚' });
   return out;
 }
 
@@ -1176,22 +1247,115 @@ function brew(id) {
   if (id === 'yan') { S.lifeY += P.ys; S.yanshou++; S.warned = -1; log(`服下延寿丹，寿元增加 ${P.ys} 年。`, 'gold'); }
   if (id === 'po') { S.bpill = 1; log(`丹成！${P.n}一枚，静待冲关之时。`, 'gold'); }
   if (id === 'due') { S.duepill++; log('炼成渡厄丹一枚，以备天劫。', 'gold'); }
+  if (id === 'zhan') { S.zhanyi = 1; log('炼成战意丹一枚，丹香中隐有金戈之声。', 'good'); }
   save();
+}
+
+/* ---------- 镇妖塔 ---------- */
+/* 无尽之塔，一层比一层强；每世从头爬起，历代最高层数单独存档，供日后排行榜使用 */
+const TOWER_KEY = 'wendao-tower-best';
+let towerBest = 0;
+try { towerBest = +localStorage.getItem(TOWER_KEY) || 0; } catch (e) {}
+const TW_MONS = ['石精', '赤眼狼妖', '血蝠', '骷髅兵', '画皮狐妖', '铁背熊罴', '阴煞鬼将', '三尾毒蝎', '火鸦'];
+const TW_KINGS = ['黑山妖王', '白骨夫人', '九头虫', '金翅大鹏', '六耳魔猿', '赤炎魔龙', '九尾天狐', '饕餮', '混世魔王'];
+const towerFoe = f => .5 * Math.pow(f, 1.25) * (f % 10 ? 1 : 1.2);
+const towerMon = f => f % 10 ? TW_MONS[f * 7 % TW_MONS.length] : TW_KINGS[(f / 10 - 1) % TW_KINGS.length];
+const towerPow = () => power() * (S.zhanyi ? 1.3 : 1);
+/* 胜负比历练更看战力：强一成就稳一截 */
+const towerWin = f => { const a = Math.pow(towerPow(), 4), b = Math.pow(towerFoe(f), 4); return clamp(a / (a + b), .02, .98); };
+function towerLoot(f) {
+  const r = realm(), o = { s: Math.round(8 * Math.pow(2.2, r) * (1 + f / 25)), h: f % 5 ? 0 : 2 * (1 + r), big: '' };
+  if (f % 10 === 0) { o.s *= 8; o.big = (f / 10) % 2 ? 'fabao' : 'gongfa'; }
+  return o;
+}
+const bigName = k => k === 'fabao' ? '法宝精进一阶' : '功法精进一重';
+
+function climb() {
+  if (busy()) return;
+  const f = S.tower + 1, mon = towerMon(f), w = towerWin(f), zy = S.zhanyi;
+  S.ageM += 1; S.zhanyi = 0;
+  const head = `【镇妖塔·第${f}层】${zy ? '服下战意丹，' : ''}`;
+  if (Math.random() < w) {
+    const L = towerLoot(f);
+    S.tower = f; S.stones += L.s; S.herbs += L.h;
+    let extra = '';
+    if (L.big === 'fabao') { S.fabao++; extra = `，以妖王精魄祭炼法宝，得${fabaoName(S.fabao)}`; }
+    if (L.big === 'gongfa') { S.gongfa++; extra = `，于妖王洞府得一卷残经，功法精进至《${gongfaName(S.gongfa)}》`; }
+    const rec = f > towerBest;
+    if (rec) { towerBest = f; try { localStorage.setItem(TOWER_KEY, String(f)); } catch (e) {} }
+    log(head + `斩${mon}，得灵石 ${fmt(L.s)}${L.h ? '、灵草 ' + L.h + ' 株' : ''}${extra}。${rec && f > 1 ? '已破历代最高！' : ''}`, L.big ? 'gold' : 'good');
+  } else {
+    S.injT = Math.max(S.injT, 24);
+    log(head + `不敌${mon}，被塔灵送出塔外，负伤二十四月。`, 'bad');
+  }
+  checkLife();
+  save();
+}
+
+/* ---------- 闭关（离线收益） ---------- */
+const OFF_CAP = 8 * 3600;  // 至多计 8 小时
+const OFF_EFF = .5;        // 闭关修炼效率为在线的一半
+const OFF_AGE = .3;        // 闭关时光阴流逝放缓
+let away = null;
+function dur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
+  if (h) return `${h} 小时${m ? ' ' + m + ' 分' : ''}`;
+  return m ? `${m} 分钟` : `${sec} 秒`;
+}
+const shichen = s => s >= 7200 ? cn(Math.floor(s / 7200)) + '个时辰' : cn(Math.max(1, Math.floor(s / 900))) + '刻';
+
+function closedDoor(sec) {
+  if (!S.started || S.over || sec < 60) return;
+  const s = Math.min(sec, OFF_CAP), M = s * MPS * OFF_EFF, a = snap(), lv0 = S.lv;
+  let left = M, xp = 0;
+  /* 小境界水到渠成；大境界与天劫须亲自冲关 */
+  while (left > 1e-9) {
+    const q = req(S.lv), need = q - S.xp;
+    if (need <= 1e-9) {
+      if (S.lv < TOP && !nextMajor()) { S.lv++; S.xp = 0; continue; }
+      break;
+    }
+    const r = rate(true), t = Math.min(left, need / r);
+    S.xp = Math.min(q, S.xp + r * t); xp += r * t; left -= t;
+  }
+  partners().forEach(c => { c.lv = Math.max(c.lv, S.lv - 1); });
+  const age = Math.min((M - left) * OFF_AGE, Math.max(0, maxLifeY() * 12 - S.ageM - 24));
+  S.ageM += age;
+  S.stones += stipend() * M;
+  S.injT = Math.max(0, S.injT - M); S.tideT = Math.max(0, S.tideT - M);
+  const sc = S.sect;
+  if (!sc.left) { sc.refM -= M; if (sc.refM <= 0) { genBoard(); sc.refM = 36; } sc.tourneyM -= M; }
+  promote();
+  log(`闭关${shichen(s)}，修为 +${fmt(xp)}${S.lv > lv0 ? '，破关至' + LEVELS[S.lv].name : ''}。`, 'good');
+  away = { sec, s, xp, from: lv0, to: S.lv, ageY: Math.round(age / 12), stuck: left > 1e-9, ds: deltas(a, snap()) };
+}
+function awayHtml() {
+  const A = away, L = LEVELS[S.lv];
+  const gate = L.trib ? (S.lv === TOP ? '鸿蒙道劫' : '九九天劫') : REALMS[L.r + 1].n + '瓶颈';
+  return `<h2>出关</h2>
+    <p>你闭关${shichen(A.s)}（约 ${dur(A.sec)}），修为精进 ${fmt(A.xp)}${A.to > A.from ? `，一路破关至${L.name}` : ''}。</p>
+    ${A.ds.length ? `<div class="fb gold">${fbInner({ lines: [], ds: A.ds })}</div>` : ''}
+    <p class="m">${A.sec > OFF_CAP ? '闭关收益至多计 8 小时，多出的时光未计入。' : ''}闭关时修炼效率为平日一半，光阴流逝放缓，寿元只耗去 ${A.ageY} 年。${A.stuck ? `如今已至${gate}，须亲自冲关，余下的闭关时光未能化作修为。` : ''}</p>
+    <div class="row"><button class="btn gold ready" data-act="away" type="button">出关</button></div>`;
 }
 
 /* ---------- 天劫 ---------- */
 let trib = null;
 const tribHp = () => 100 + 6 * S.fabao + 40 * S.duepill + 30 * partners().length;
 const tribMul = () => (1 - Math.min(.55, .05 * S.fabao)) * (S.root === 'lei' ? .8 : 1) * (1 - Math.min(.15, .03 * S.reinc));
-const tribExpect = () => Math.round(171 * tribMul());
+/* 渡劫期引九九天劫飞升仙界；道祖引鸿蒙道劫，天雷威力 ×2.5 */
+const FIN_MUL = 2.5;
+const tribExpect = fin => Math.round(171 * tribMul() * (fin ? FIN_MUL : 1));
 
-function startTrib() {
+function startTrib(fin) {
   const hp = tribHp();
-  trib = { k: 0, hp, max: hp, mul: tribMul() };
+  trib = { k: 0, hp, max: hp, mul: tribMul() * (fin ? FIN_MUL : 1), fin };
   S.duepill = 0;
   $('#trib').hidden = false;
+  $('#trib-t').textContent = fin ? '鸿蒙道劫' : '九九天劫';
   const p = partner();
-  $('#trib-n').textContent = p ? `劫云汇聚，${pNames()}在百丈外布阵护法……` : '劫云汇聚，方圆千里风云变色……';
+  $('#trib-n').textContent = p ? `劫云汇聚，${pNames()}在百丈外布阵护法……` : fin ? '诸天震动，鸿蒙紫气自混沌深处涌来……' : '劫云汇聚，方圆千里风云变色……';
   updTrib();
   sizeT();
   setTimeout(strike, 1800);
@@ -1217,18 +1381,29 @@ function strike() {
   bolt(); updTrib();
   const el = $('#trib'); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   if (trib.hp <= 0) return setTimeout(() => endTrib(false), 1400);
-  if (trib.k >= 9) return setTimeout(() => endTrib(true), 1600);
+  if (trib.k >= 9) return setTimeout(() => act('', () => endTrib(true)), 1600);
   setTimeout(strike, wait);
 }
 function endTrib(ok) {
-  const k = trib.k;
+  const k = trib.k, fin = trib.fin;
   $('#trib').hidden = true; trib = null;
   if (!ok) return endGame('trib', { k: cn(k) });
-  log('九道天雷尽数扛下，仙光自九天垂落。', 'gold');
+  if (!fin) {
+    S.lv++; S.xp = 0; S.yanshou = 0; addMo(8);
+    partners().forEach(c => { c.lv = Math.max(c.lv, S.lv - 1); });
+    log(`九道天雷尽数扛下，仙光自九天垂落。你破碎虚空，${partners().length ? '与' + pNames() + '一同' : ''}飞升仙界，成就${LEVELS[S.lv].name}！寿元增至 ${fmt(maxLifeY())} 年。`, 'gold');
+    ripple(3, 'gold');
+    S.sect.elder = S.sect.elder || (!S.sect.left && S.sect.rank >= 4);
+    S.pending = { id: 'heaven' };
+    save(); showModal();
+    return;
+  }
+  log('鸿蒙道劫的最后一道天雷散去，大道垂青。', 'gold');
   const deep = partners().filter(c => c.fav >= 90);
   if (S.sacrificed) endGame('alone', { p: S.sacName });
   else if (deep.length) endGame('couple', { p: deep.map(c => c.name).join('、'), many: deep.length > 1 });
-  else if (S.sect.rank >= 4 && !S.sect.left) endGame('patriarch');
+  else if (S.sect.f && S.sect.rank >= 4 && !S.sect.left) endGame('emperor');
+  else if (S.sect.elder || (!S.sect.f && S.sect.rank >= 4 && !S.sect.left)) endGame('patriarch');
   else endGame('ascend');
 }
 const tcv = $('#tcv'), tctx = tcv.getContext('2d');
@@ -1290,6 +1465,12 @@ function testRoot(isReroll) {
 }
 
 /* ---------- 弹窗 ---------- */
+/* full：结局页用的完整写法 */
+function factionLabel(full) {
+  const sc = S.sect;
+  if (sc.f) return sc.left ? '逍遥散仙' : '天庭' + F().ranks[sc.rank];
+  return sc.left ? (full ? '叛出' + SECT : '散修') : (full ? SECT : '') + RANKS[sc.rank];
+}
 function statsHtml() {
   const cl = S.comps.map(c => esc(c.name) + (c.alive ? (c.partner ? '' : '（知己）') : '（已故）')).join('、');
   return `<dl class="kv">
@@ -1298,7 +1479,7 @@ function statsHtml() {
     <dt>境界</dt><dd>${LEVELS[S.lv].name}</dd>
     <dt>战力</dt><dd>${fmt(pwr())}</dd>
     <dt>享年</dt><dd>${ageY()} 岁</dd>
-    <dt>宗门</dt><dd>${S.sect.left ? '叛出' + SECT : SECT + RANKS[S.sect.rank]}</dd>
+    <dt>${S.sect.f ? '仙界' : '宗门'}</dt><dd>${factionLabel(true)}</dd>
     <dt>道侣</dt><dd>${cl || '无'}</dd>
     <dt>轮回</dt><dd>第${cn(S.reinc + 1)}世</dd></dl>`;
 }
@@ -1351,6 +1532,11 @@ function showModal() {
         : `<button class="btn gold ready" data-act="test" type="button">测验灵根</button>`}</div>`;
     return;
   }
+  if (away) {
+    m.hidden = false;
+    c.innerHTML = awayHtml();
+    return;
+  }
   if (S.pending) {
     m.hidden = false;
     const v = EVENTS[S.pending.id].view(S.pending);
@@ -1367,13 +1553,13 @@ try { tab = localStorage.getItem('wendao-tab') || 'trip'; } catch (e) {}
 
 function renderStatus() {
   const L = LEVELS[S.lv], q = req(S.lv);
-  setHtml('#s-seal', REALMS[L.r].n.split('').join('<br>'));
+  setHtml('#s-seal', (REALMS[L.r].seal || REALMS[L.r].n).split('').join('<br>'));
   $('#s-name').textContent = S.name;
   $('#s-root').textContent = S.root ? `${root().n} · ${S.els}` : '未测灵根';
   $('#s-xp').textContent = `${fmt(S.xp)} / ${fmt(q)}`;
   $('#s-xpbar').style.width = (S.xp / q * 100) + '%';
   const ml = maxLifeY(), a = S.ageM / 12;
-  $('#s-age').textContent = `${Math.floor(a)} / ${ml} 岁`;
+  $('#s-age').textContent = `${fmt(a)} / ${fmt(ml)} 岁`;
   $('#s-lifebar').style.width = clamp(a / ml, 0, 1) * 100 + '%';
   $('#s-lifebar-w').classList.toggle('low', ml - a < 10);
   $('#s-mo-w').hidden = S.mo <= 0;
@@ -1382,22 +1568,25 @@ function renderStatus() {
   $('#s-stones').textContent = fmt(S.stones);
   $('#s-herbs').textContent = fmt(S.herbs);
   $('#s-pow').textContent = fmt(pwr());
-  $('#s-powd').textContent = `境界 ${(S.lv + 1) * 100}` + (S.fabao ? ` · 法宝 ×${(1 + .15 * S.fabao).toFixed(2)}` : '') + (S.injT > 0 ? ' · 负伤 ×0.7' : '');
+  const pk = partners().length;
+  $('#s-powd').textContent = `境界 ${(S.lv + 1) * 100}` + (S.fabao ? ` · 法宝 ×${(1 + .15 * S.fabao).toFixed(2)}` : '') + (pk ? ` · 道侣 ×${(1 + .1 * pk).toFixed(1)}` : '') + (S.injT > 0 ? ' · 负伤 ×0.7' : '');
   const chips = [], p = partner();
   if (S.injT > 0) chips.push(`<span class="chip red">负伤 ${Math.ceil(S.injT)} 月</span>`);
   if (S.tideT > 0) chips.push(`<span class="chip jade">灵潮 ${Math.ceil(S.tideT)} 月</span>`);
   if (p) chips.push(`<span class="chip rose">双修${partners().length > 1 ? ' ×' + partners().length : ''}</span>`);
   if (S.bpill) chips.push(`<span class="chip gold">${REALMS[Math.min(L.r + 1, REALMS.length - 1)].pill}</span>`);
   if (S.duepill) chips.push(`<span class="chip gold">渡厄丹 ×${S.duepill}</span>`);
+  if (S.zhanyi) chips.push('<span class="chip gold">战意丹</span>');
   if (!chips.length) chips.push('<span class="small">气息平稳</span>');
   setHtml('#s-chips', chips.join(''));
   setHtml('#s-kv', `
-    <dt>宗门</dt><dd>${S.sect.left ? '散修' : RANKS[S.sect.rank]}</dd>
+    <dt>${S.sect.f ? '仙界' : '宗门'}</dt><dd>${factionLabel()}</dd>
     <dt>道侣</dt><dd>${alive().length ? alive().map(c => esc(c.name) + (c.partner ? '' : '（知己）')).join('、') : '无'}</dd>
     <dt>功法</dt><dd>${gongfaName(S.gongfa)}</dd>
     <dt>聚灵阵</dt><dd>${S.array ? cn(S.array) + '阶' : '未布置'}</dd>
     <dt>法宝</dt><dd>${fabaoName(S.fabao)}</dd>
-    <dt>${S.sect.left ? '散修所得' : '宗门月俸'}</dt><dd>${fmt(stipend())} 灵石</dd>`);
+    <dt>${S.sect.left ? '散修所得' : S.sect.f ? '天庭俸禄' : '宗门月俸'}</dt><dd>${fmt(stipend())} 灵石</dd>`);
+  setHtml('#tab-sect', S.sect.f && S.sect.left ? '散仙' : F().tab);
   $('#h-reinc').textContent = `第${cn(S.reinc + 1)}世`;
   $('#b-sex').textContent = `形象 · ${S.sex === 'f' ? '女修' : '男修'}`;
   setHtml('#fig', figHtml());
@@ -1408,14 +1597,17 @@ function renderStatus() {
   const full = S.xp >= q, b = $('#b-break');
   b.disabled = !full || !!S.over || !S.started;
   b.classList.toggle('ready', full);
-  b.firstChild.textContent = S.lv >= TOP ? '渡劫' : '突破';
-  $('#b-chance').textContent = !full ? '修为未满' : S.lv >= TOP ? '引动天劫' : `成功率 ${Math.round(chance() * 100)}%`;
+  const fin = S.lv === TOP;
+  b.firstChild.textContent = L.trib ? '渡劫' : '突破';
+  $('#b-chance').textContent = !full ? '修为未满' : L.trib ? (fin ? '引动道劫' : '引动天劫') : `成功率 ${Math.round(chance() * 100)}%`;
 
   let h;
-  if (S.lv >= TOP) {
-    h = `${full ? '修为圆满，可引九九天劫。' : '渡劫期。修为圆满后便可引动天劫。'}护体 ${tribHp()}，九道天雷预计共伤 ${tribExpect()} 上下。法宝、渡厄丹与道侣护法皆可增护体。`;
+  const toFull = () => { const m = Math.ceil((q - S.xp) / Math.max(rate(), .01)); return `${fmt(q - S.xp)} 修为，约 ${fmt(m)} 月（${dur(m / MPS)}）`; };
+  if (L.trib) {
+    const nm = fin ? '鸿蒙道劫' : '九九天劫';
+    h = `${full ? `修为圆满，可引${nm}${fin ? '，以身合道' : '，飞升仙界'}。` : `${L.name}，距引动${nm}尚需 ${toFull()}。`}护体 ${tribHp()}，九道天雷预计共伤 ${tribExpect(fin)} 上下。法宝、渡厄丹与道侣护法皆可增护体。`;
   } else if (!full) {
-    h = `距${LEVELS[S.lv + 1].name}尚需 ${fmt(q - S.xp)} 修为，约 ${Math.ceil((q - S.xp) / Math.max(rate(), .01))} 月。`;
+    h = `距${LEVELS[S.lv + 1].name}尚需 ${toFull()}。`;
   } else if (nextMajor()) {
     const P = REALMS[L.r + 1].pill;
     h = S.bpill ? `修为已满，已备好${P}，可冲击${REALMS[L.r + 1].n}。` : `修为已满。冲击${REALMS[L.r + 1].n}凶险万分，可先炼制或兑换${P}。`;
@@ -1446,24 +1638,27 @@ function sideTrip() {
 }
 
 function sideSect() {
-  const sc = S.sect;
-  if (sc.left) return `<div class="sum"><div class="rank">散修</div>
-    <p class="note">你已叛出${SECT}，宗门任务与宝库皆与你无缘，月俸只剩三成，靠旧日故交接济度日。</p></div>`;
+  const sc = S.sect, A = F();
+  const elder = sc.elder && sc.f ? `<p class="note">你在下界官至${RANKS[4]}，${sc.f && !sc.left ? '若未能位列帝君，' : ''}证道时仍可得「宗门老祖」结局。</p>` : '';
+  if (sc.left) return sc.f ? `<div class="sum"><div class="rank">逍遥散仙</div>
+    <p class="note">你婉拒了天庭册封，不受天规约束，修炼速度 ×1.2。没有天庭差事与天库，月俸只剩三成，靠仙界道友往来接济。</p>${elder}</div>`
+    : `<div class="sum"><div class="rank">散修</div>
+    <p class="note">你已叛出${SECT}，宗门任务与宝库皆与你无缘，月俸只剩三成，靠旧日故交接济度日。飞升之后，天庭不问下界旧账。</p></div>`;
   const nx = sc.rank < 4 ? sc.rank + 1 : -1;
-  let h = `<div class="sum"><div class="top"><span class="rank">${RANKS[sc.rank]}</span><span class="chip gold">贡献 ${fmt(sc.contrib)}</span></div>
-    <p class="note">${nx < 0 ? '你已是宗门地位最尊者。以此身份飞升，可得「宗门老祖」结局。'
-      : `晋升${RANKS[nx]}：累计贡献 ${fmt(sc.total)} / ${fmt(RANK_TOTAL[nx])}，且修为达${LEVELS[RANK_LV[nx]].name}。月俸 ×${(1 + .5 * nx).toFixed(1)}。`}</p></div>`;
-  h += '<h3 class="sec-h">任务榜</h3><div class="list">' + sc.tasks.map((t, j) => {
-    const T = TASKS[t.i], w = T.fight ? taskWin(T.fight) : 1;
+  let h = `<div class="sum"><div class="top"><span class="rank">${sc.f ? '天庭 · ' : ''}${A.ranks[sc.rank]}</span><span class="chip gold">贡献 ${fmt(sc.contrib)}</span></div>
+    <p class="note">${nx < 0 ? A.top
+      : `晋升${A.ranks[nx]}：累计贡献 ${fmt(sc.total)} / ${fmt(A.total[nx])}，且修为达${LEVELS[A.lv[nx]].name}。月俸 ×${(1 + .5 * nx).toFixed(1)}。`}</p>${elder}</div>`;
+  h += `<h3 class="sec-h">${sc.f ? '天庭差事' : '任务榜'}</h3><div class="list">` + sc.tasks.map((t, j) => {
+    const T = A.tasks[t.i], w = T.fight ? taskWin(T.fight) : 1;
     return `<div class="item"><h3>${T.n}${T.fight ? riskChip(w) : '<span class="chip">无险</span>'}</h3>
       <div class="act"><button class="btn sm" data-act="task" data-i="${j}" type="button">接取</button></div>
       <div class="meta">${cn(T.m)}月 · 贡献 ${fmt(t.c)} · 灵石 ${fmt(t.s)}${t.h ? ' · 灵草 ' + t.h : ''}${T.fight ? ` · ${t.mon}战力 ${fmt(shown(taskFoe(T.fight)))} · 胜算 ${Math.round(w * 100)}%` : ''}</div>
       <p>${T.d}</p>${fbHtml('task:' + j)}</div>`;
-  }).join('') + `</div><p class="note" style="margin-top:6px">任务榜每三十六月更换一批。</p>`;
-  h += '<h3 class="sec-h">宗门宝库</h3><div class="list">' + treasury().map(it => {
+  }).join('') + `</div><p class="note" style="margin-top:6px">${sc.f ? '差事' : '任务榜'}每三十六月更换一批。</p>`;
+  h += `<h3 class="sec-h">${sc.f ? '天库' : '宗门宝库'}</h3><div class="list">` + treasury().map(it => {
     const lock = sc.rank < it.rk;
     return `<div class="item ${lock ? 'locked' : ''}"><h3>${it.n}</h3>
-      <div class="act"><button class="btn sm" data-act="ex" data-id="${it.id}" type="button" ${lock || !it.ok || sc.contrib < it.c ? 'disabled' : ''}>${lock ? RANKS[it.rk] + '可兑' : it.ok ? '兑换' : it.why}</button>
+      <div class="act"><button class="btn sm" data-act="ex" data-id="${it.id}" type="button" ${lock || !it.ok || sc.contrib < it.c ? 'disabled' : ''}>${lock ? A.ranks[it.rk] + '可兑' : it.ok ? '兑换' : it.why}</button>
       <span class="cost ${sc.contrib < it.c ? 'no' : ''}">贡献 ${fmt(it.c)}</span></div>
       <p>${it.d}</p>${fbHtml('ex:' + it.id)}</div>`;
   }).join('') + '</div>';
@@ -1519,12 +1714,25 @@ function sideHome() {
 function sidePill() {
   return '<div class="list">' + pills().map(P => `<div class="item"><h3>${P.n}</h3>
     <div class="act"><button class="btn sm" data-act="brew" data-id="${P.id}" type="button" ${!P.ok || S.herbs < P.h || S.stones < P.s ? 'disabled' : ''}>${P.ok ? '炼制' : P.why}</button>${costTag(P.s, P.h)}</div>
-    <div class="meta">${P.id === 'po' || P.id === 'due' ? '冲关之物' : '炼成即服'}</div><p>${P.d}</p>${fbHtml('brew:' + P.id)}</div>`).join('') + '</div>';
+    <div class="meta">${P.id === 'po' || P.id === 'due' ? '冲关之物' : P.id === 'zhan' ? '登塔之物' : '炼成即服'}</div><p>${P.d}</p>${fbHtml('brew:' + P.id)}</div>`).join('') + '</div>';
+}
+
+function sideTower() {
+  const f = S.tower + 1, w = towerWin(f), L = towerLoot(f), boss = f % 10 === 0;
+  const nb = Math.ceil(f / 10) * 10, NB = towerLoot(nb);
+  return `<div class="sum"><div class="top"><span class="rank">第 ${f} 层</span><span class="chip gold">历代最高 ${towerBest} 层</span></div>
+    <p class="note">一座无尽之塔，一层比一层强，每十层有妖王镇守。塔灵护持，落败只会负伤、不会陨落。本世已登 ${S.tower} 层，转世后从头爬起。</p></div>
+    <div class="list"><div class="item"><h3>${towerMon(f)}${boss ? '<span class="chip red">妖王</span>' : ''}${riskChip(w)}</h3>
+      <div class="act"><button class="btn sm ${boss ? 'gold' : ''}" data-act="climb" type="button">挑战</button></div>
+      <div class="meta">耗时 1 月 · 守关战力 ${fmt(shown(towerFoe(f)))} · 你 ${fmt(Math.round(towerPow() * 100))}${S.zhanyi ? '（战意丹）' : ''} · 胜算 ${Math.round(w * 100)}%</div>
+      <p>过关得灵石 ${fmt(L.s)}${L.h ? '、灵草 ' + L.h + ' 株' : ''}${L.big ? '，另得' + bigName(L.big) : ''}。</p>${fbHtml('climb')}</div></div>
+    ${boss ? '' : `<p class="note" style="margin-top:10px">第${nb}层妖王：${towerMon(nb)}，守关战力 ${fmt(shown(towerFoe(nb)))}，击败得${bigName(NB.big)}与灵石 ${fmt(NB.s)}。</p>`}
+    <p class="note" style="margin-top:6px">战力 = 境界 × 法宝 × 道侣助阵（每位 +10%）。丹房可炼战意丹，下一战战力 ×1.3。${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，战力打七折，可先服疗伤丹。</span>' : ''}</p>`;
 }
 
 function renderSide() {
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
-  const f = { trip: sideTrip, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill }[tab] || sideTrip;
+  const f = { trip: sideTrip, tower: sideTower, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill }[tab] || sideTrip;
   setHtml('#side-body', f());
 }
 
@@ -1614,7 +1822,7 @@ function draw(dt) {
   ctx.globalAlpha = 1;
 
   const rl = realm(), col = rl >= 2 ? C.gold : C.jade;
-  const cr = w * (.03 + .008 * rl) * (1 + .07 * Math.sin(T * 2));
+  const cr = w * (.03 + .008 * Math.min(rl, 10)) * (1 + .07 * Math.sin(T * 2));
   const g = ctx.createRadialGradient(c, c, 0, c, c, cr * 3.2);
   g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.globalAlpha = rl === 0 ? .55 : .85;
@@ -1648,7 +1856,17 @@ function drawTrib(dt) {
 }
 
 /* ---------- 存档 ---------- */
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+/* t：最后一次在线的时刻。页面藏到后台时不刷新它，回来时按这段空白结算闭关 */
+function save() {
+  if (!document.hidden) S.t = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
+}
+function settleAway() {
+  const sec = (Date.now() - (S.t || Date.now())) / 1000;
+  S.t = Date.now();
+  if (!trib) closedDoor(sec);
+  if (away) { save(); showModal(); }
+}
 function hydrate(d) {
   if (!d || d.v !== 1) return null;
   const f = fresh(null);
@@ -1688,6 +1906,8 @@ document.addEventListener('click', e => {
   else if (a === 'up') act('up:' + k, () => upgrade(k));
   else if (a === 'brew') act('brew:' + id, () => brew(id));
   else if (a === 'choose') act('', () => choose(+i));
+  else if (a === 'climb') act('climb', climb);
+  else if (a === 'away') { away = null; save(); showModal(); }
   else if (a === 'gallery') { ui = 'gallery'; showModal(); }
   else if (a === 'close') { ui = null; showModal(); }
   else if (a === 'test') testRoot(false);
@@ -1724,7 +1944,10 @@ $('#b-reset').addEventListener('click', e => {
   }
 });
 addEventListener('resize', () => { if (trib) sizeT(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { S.t = Date.now(); save(); }
+  else settleAway();
+});
 setInterval(save, 5000);
 
 /* ---------- 启动 ---------- */
@@ -1739,6 +1962,7 @@ function start(data) {
   S = (data && hydrate(data.state)) || load() || fresh(null);
   if (!S.sect.tasks.length) genBoard();
   logDirty = true;
+  if (!data || !data.state) settleAway();
   sizeCv(); showModal(); renderStatus(); renderSide(); renderLog();
   requestAnimationFrame(t => { last = t; frame(t); });
 }

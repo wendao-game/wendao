@@ -948,6 +948,8 @@ const ZM = [
   { k: 'bi',   n: '诸天大比', m: 12, d: '胜则声望大涨，败则修为受损' },
 ];
 const zb = id => (S.zong && S.zong.b[id]) || 0;
+/* 飞升仙界（真仙及以上）即可开宗 */
+const canZong = () => realm() >= ASCEND;
 const zongFoundCost = () => ({ y: lifeCost(.1, 50), s: Math.round(stipend() * 120) });
 const zongRecCost = () => Math.round(stipend() * 30 * (1 + .5 * S.zong.ds.length));
 const zongTeachCost = () => lifeCost(.02, 5);
@@ -963,7 +965,7 @@ function zongDisciple() {
 }
 function zongFound(name) {
   const c = zongFoundCost();
-  if (S.zong || !S.dao || lifeLeft() <= c.y + 1 || S.stones < c.s) return;
+  if (S.zong || !canZong() || lifeLeft() <= c.y + 1 || S.stones < c.s) return;
   S.ageM += c.y * 12; S.stones -= c.s;
   S.zong = { name, pres: 0, ds: [], b: {} };
   S.zong.ds.push(zongDisciple(), zongDisciple());
@@ -2317,7 +2319,7 @@ function showModal() {
     m.hidden = false;
     const zc = zongFoundCost();
     c.innerHTML = `<h2>开宗立派</h2>
-      <p>你已证得大道，却未随天道而去。是时候在这方天地留下自己的道统了。</p>
+      <p>你已飞升仙界，修为通天。是时候开辟山门，在三界留下自己的道统了。</p>
       <label for="zong-name">宗门名号</label>
       <input id="zong-name" maxlength="6" value="${pick(ZONG_NAMES)}" autocomplete="off">
       <p class="m">需燃寿 ${fmt(zc.y)} 年、灵石 ${fmt(zc.s)}。名号立下后不可更改，下一世还能受这座宗门的祖师遗泽。</p>
@@ -2663,11 +2665,11 @@ function sideGear() {
     ${!free && S.bag.length ? '<p class="note" style="margin-top:8px">三个位置都满了，先卸下一件才能换上新的。</p>' : ''}`;
 }
 function sideZong() {
-  if (!S.dao) return `<div class="sum"><span class="rank">开宗立派</span><p class="note">证道之后选择「暂不转世」，便可开宗立派、自立门户。</p></div>`;
+  if (!canZong()) return `<div class="sum"><span class="rank">开宗立派</span><p class="note">渡过九九天劫、飞升仙界之后，便可开宗立派、自立门户。</p></div>`;
   if (!S.zong) {
     const zc = zongFoundCost();
     return `<div class="sum"><span class="rank">开宗立派</span>
-      <p class="note">以道祖之身开辟山门，招收弟子、扩建殿宇。宗门的一切都要以寿元为代价：开宗、传功、开辟洞天，都得燃寿。</p>
+      <p class="note">以仙人之身开辟山门，招收弟子、扩建殿宇。宗门的一切都要以寿元为代价：开宗、传功、开辟洞天，都得燃寿。</p>
       <p class="note">开宗需燃寿 ${fmt(zc.y)} 年、灵石 ${fmt(zc.s)}。寿元尚余 ${fmt(Math.max(0, lifeLeft()))} 年。</p>
       <div class="btnrow"><button class="btn gold ready" data-act="zong-found" type="button">开宗立派</button></div></div>`;
   }
@@ -2693,7 +2695,7 @@ function sideZong() {
 }
 function renderSide() {
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
-  $('#tab-zong').hidden = !S.dao;
+  $('#tab-zong').hidden = !canZong();
   const f = { trip: sideTrip, tower: sideTower, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill, gear: sideGear, zong: sideZong }[tab] || sideTrip;
   setHtml('#side-body', f());
 }

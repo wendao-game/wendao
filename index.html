@@ -291,6 +291,10 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .mb-ic{display:block;width:44px;height:44px;border-radius:8px;flex:none}
 .end.mbx{flex-direction:row;align-items:center;gap:10px}
 .end.mbx>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.legacy{display:flex;gap:8px;align-items:flex-start;font-size:13px!important;letter-spacing:0!important;color:var(--gold)!important;line-height:1.5;cursor:pointer}
+.legacy input{margin-top:3px}
+.item .btnrow{grid-column:1/-1;margin-top:6px}
+.item .btnrow .btn.sm{flex-direction:column;gap:0}
 .gear.mibao{--qc:var(--gold);background:linear-gradient(100deg,rgba(220,180,102,.12),var(--panel-2) 60%)}
 .bt-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);letter-spacing:.1em}
 .bt-side{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;align-items:center}
@@ -395,12 +399,12 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
       <div class="big" id="c-realm">炼气一层</div>
       <div class="rate" id="c-rate">每月 +1 修为</div>
     </div>
-    <div class="disc" id="disc" role="button" tabindex="0" aria-label="运功一次">
+    <div class="disc" id="disc" aria-label="阵盘">
       <canvas id="cv"></canvas>
       <div class="fig" id="fig"></div>
     </div>
     <div class="actions">
-      <button class="btn big jade" id="b-med" type="button">运功<small>点阵盘亦可</small></button>
+      <button class="btn big jade" id="b-med" type="button">燃寿<small>以寿元换机缘</small></button>
       <button class="btn big gold" id="b-break" type="button" disabled>突破<small id="b-chance">修为未满</small></button>
     </div>
     <p class="hint" id="hint"></p>
@@ -415,6 +419,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
       <button role="tab" data-tab="home" type="button">洞府</button>
       <button role="tab" data-tab="pill" type="button">丹房</button>
       <button role="tab" data-tab="gear" type="button">灵宝</button>
+      <button role="tab" data-tab="zong" type="button" id="tab-zong" hidden>开宗</button>
     </div>
     <div id="side-body"></div>
   </section>
@@ -627,6 +632,7 @@ function fresh(prev) {
     bag: [], eq: [null, null, null],
     peiT: 0, jinT: 0, xunbao: 0, huanhun: 0, wudao: 0,
     mb: prev && prev.mb && prev.mb.hongmeng ? { hongmeng: true } : {}, streak: 0, qyc: {}, tqM: 0,
+    zong: null, legacy: '', burnBt: false, burnFight: false, dgGain: 0,
   };
 }
 let S = fresh(null);
@@ -637,8 +643,9 @@ try { endings = JSON.parse(localStorage.getItem(END_KEY) || '[]'); } catch (e) {
 
 const realm = () => LEVELS[S.lv].r;
 const root = () => ROOTS.find(r => r.id === S.root) || ROOTS[4];
-const req = lv => Math.round(40 * Math.pow(1.45, lv));
-const maxLifeY = () => Math.round(REALMS[realm()].life * (S.path === 'ti' ? 1.2 : 1) * (1 + gear('shou') / 100)) + S.lifeY;
+/* 筑基之前保持原速；从金丹起每个小境界再乘 1.1，越往后越慢，到渡劫约慢十倍、仙界慢几十倍 */
+const req = lv => Math.round(40 * Math.pow(1.45, lv) * Math.pow(1.1, Math.max(0, lv - 12)));
+const maxLifeY = () => Math.round(REALMS[realm()].life * (S.path === 'ti' ? 1.2 : 1) * (1 + gear('shou') / 100) * (1 + .1 * dg('changsheng'))) + S.lifeY;
 const ageY = () => Math.floor(S.ageM / 12);
 /* 道侣：可有多位。元婴可结两位，合体可结三位 */
 const alive = () => S.comps.filter(c => c.alive);
@@ -647,7 +654,7 @@ const partner = () => partners()[0] || null;
 const pNames = () => partners().map(c => c.name).join('、');
 const compCap = () => realm() >= 6 ? 3 : realm() >= 3 ? 2 : 1;
 const pBoost = () => { const k = partners().length; return k ? 1.15 + .15 * k : 1; };
-const stipend = () => .12 * Math.pow(2.1, realm()) * (S.sect.left ? .3 : 1 + .5 * S.sect.rank);
+const stipend = () => .12 * Math.pow(2.1, realm()) * (S.sect.left ? .3 : 1 + .5 * S.sect.rank) * (S.legacy ? 1.5 : 1);
 /* 初入仙途：前期修炼加速，炼气一层 ×5，逐层递减，到第 17 个小境界恢复正常 */
 const earlyBoost = () => Math.max(1, 5 - .25 * S.lv);
 function rate(noBuff) {
@@ -716,7 +723,7 @@ const costArray = () => Math.round(40 * Math.pow(1.95, S.array));
 const costFabao = () => Math.round(35 * Math.pow(2.0, S.fabao));
 const nextMajor = () => S.lv < TOP && LEVELS[S.lv + 1].r !== realm();
 const power = () => (S.lv + 1) * fabaoMul() * (1 + .1 * partners().length) * injMul() * (isPath('jian') ? 1.35 : 1) * (sk(10) ? 1.2 : 1)
-  * (1 + gear('pow') / 100) * mbPow();
+  * (1 + gear('pow') / 100) * mbPow() * (1 + .05 * dg('zhanhun')) * (S.burnFight ? 1.5 : 1);
 const odds = (P, E) => clamp(P * P / (P * P + E * E), .05, .97);
 /* 战力：把内部的斗法强度 ×100 显示给玩家 */
 const pwr = () => Math.round(power() * 100);
@@ -726,7 +733,8 @@ function chance() {
   if (LEVELS[S.lv].trib) return 0;
   if (!nextMajor()) return .92 - .02 * realm();
   const R = REALMS[realm() + 1];
-  return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? (isPath('dan') ? .45 : .35) : 0) + (partners().length ? .03 + .02 * partners().length : 0) - S.mo / 1000, .05, .95);
+  return clamp(R.base + root().bt + .03 * S.reinc + (S.bpill ? (isPath('dan') ? .45 : .35) : 0) + (partners().length ? .03 + .02 * partners().length : 0)
+    + (S.burnBt ? .2 : 0) - S.mo / 1000, .05, .95);
 }
 
 let capture = null;
@@ -737,7 +745,7 @@ function log(t, k = '') {
   logDirty = true;
 }
 function addMo(n) {
-  if (n > 0) n *= (sk(5) ? .7 : 1) * Math.max(0, 1 + gear('mo') / 100) * (mb('xuewen') ? 1.5 : 1);
+  if (n > 0) n *= (sk(5) ? .7 : 1) * Math.max(0, 1 + gear('mo') / 100) * (mb('xuewen') ? 1.5 : 1) * (1 - .15 * dg('daoxin'));
   S.mo = clamp(S.mo + n, 0, 100);
 }
 
@@ -820,13 +828,14 @@ function gainMibao(id) {
   fx(() => burst(M.n, '秘宝现世 · ' + M.d, 'mb'));
 }
 /* 异兽：斗法时偶尔遇到的强化妖兽，打赢必出好东西 */
-const yiRoll = () => Math.random() < (mb('neidan') ? .06 : .03);
+const yiRoll = () => Math.random() < (mb('neidan') ? .06 : .03) * (1 + .5 * dg('tianyan'));
 /* 每场斗法分出胜负后调用：记连胜，并检查秘宝的隐藏掉落条件 */
 function fightEnd(win, c) {
   S.streak = win ? (S.streak || 0) + 1 : 0;
+  S.burnFight = false;
   if (!win) return;
   const q = S.qyc || {}, hr = new Date().getHours();
-  const tryMb = (id, p, ok) => { if (ok && !mb(id) && Math.random() < p) gainMibao(id); };
+  const tryMb = (id, p, ok) => { if (ok && !mb(id) && Math.random() < p * (1 + .5 * dg('tianyan'))) gainMibao(id); };
   tryMb('zhulou', .15, c.loc === 0 && q.yaonong === 0);
   tryMb('lujiao', .15, c.loc === 2 && q.linglu === 0);
   tryMb('xuewen', .3, q.mofu === 0 && /魔修/.test(c.mon || ''));
@@ -842,6 +851,187 @@ function fightEnd(win, c) {
 }
 const mbPow = () => (mb('xuewen') ? 1.3 : 1) * (mb('nianzhu') ? 1 + Math.min(.4, S.mo / 250) : 1)
   * (mb('suihui') ? 1 + Math.min(.3, .03 * (S.streak || 0)) : 1);
+
+/* ---------- 燃寿：以寿元换机缘 ---------- */
+const lifeLeft = () => maxLifeY() - S.ageM / 12;
+/* 按寿元上限的比例计价，前期几年、仙界动辄几万年 */
+const lifeCost = (p, min) => Math.max(min || 5, Math.round(maxLifeY() * p));
+const MB_HOW = {
+  zhulou: '在「山中药农」奇遇中背老人下山，之后在青云山脉斗法获胜（15%）',
+  lujiao: '在「林中灵鹿」奇遇中放走灵鹿，之后在万妖林斗法获胜（15%）',
+  xuewen: '在「魔修遗府」奇遇中修炼血色功法，之后击败魔修（30%）',
+  nilin: '负伤状态下赢下一场斗法（25%）',
+  nianzhu: '心魔 50 以上时，击败镇妖塔第 20 层的白骨夫人',
+  huhuo: '道侣中有化形的灵狐时，击败镇妖塔第 70 层的九尾天狐',
+  yaya: '储物袋装满时，击败镇妖塔第 80 层的饕餮',
+  tongqian: '在现实时间 23 点到凌晨 1 点之间斗法获胜（10%）',
+  suihui: '连续赢下 10 场斗法',
+  leijie: '身具雷灵根，在镇妖塔第 30 层及以上获胜',
+  neidan: '击败异兽（15%）',
+  hongmeng: '集齐奇遇录全部 10 桩奇遇后，在混沌海斗法获胜（20%）',
+};
+const TJ_KEY = 'wendao-mibao-tianji';
+let tianji = [];
+try { tianji = JSON.parse(localStorage.getItem(TJ_KEY) || '[]'); } catch (e) {}
+const BURN = [
+  { k: 'bt', n: '燃寿冲关', p: .1, min: 5, d: '下一次冲击大境界成功率 +20%，成败皆耗去。',
+    can: () => S.burnBt ? '已燃寿备好' : (!nextMajor() || LEVELS[S.lv].trib) ? '眼下没有大境界可冲' : '' },
+  { k: 'bi', n: '闭死关', p: .15, min: 8, d: '把这些岁月一口气坐穿，立刻得到大量修为。',
+    can: () => S.xp >= req(S.lv) ? '修为已满' : '' },
+  { k: 'tj', n: '天机推演', p: .05, min: 3, d: '窥破一件秘宝的来历，秘宝录里的谜语会换成明确的条件。',
+    can: () => MIBAO.some(M => !mbBook.includes(M.id) && !tianji.includes(M.id)) ? '' : '已无天机可推' },
+  { k: 'zd', n: '燃寿斗法', p: .05, min: 3, d: '下一场斗法燃烧精血，战力 ×1.5。',
+    can: () => S.burnFight ? '已燃寿备战' : '' },
+];
+const burnWhy = B => B.can() || (lifeLeft() <= lifeCost(B.p, B.min) + 1 ? '寿元不足' : '');
+function burn(k) {
+  const B = BURN.find(x => x.k === k);
+  if (!B || busy() || burnWhy(B)) return;
+  const y = lifeCost(B.p, B.min);
+  S.ageM += y * 12;
+  if (k === 'bt') { S.burnBt = true; log(`燃去 ${fmt(y)} 年寿元，精血化作一股磅礴灵力，静待冲关。`, 'gold'); }
+  if (k === 'bi') { const x = rate(true) * y * 12 * .8; gainXp(x); log(`燃寿闭死关，一坐便是 ${fmt(y)} 年，修为精进 ${fmt(x)}。`, 'gold'); }
+  if (k === 'tj') {
+    const M = pick(MIBAO.filter(M => !mbBook.includes(M.id) && !tianji.includes(M.id)));
+    tianji.push(M.id);
+    try { localStorage.setItem(TJ_KEY, JSON.stringify(tianji)); } catch (e) {}
+    log(`燃去 ${fmt(y)} 年寿元推演天机，窥见「${M.n}」的来历：${MB_HOW[M.id]}。`, 'gold');
+  }
+  if (k === 'zd') { S.burnFight = true; log(`燃去 ${fmt(y)} 年寿元，周身精血沸腾，下一场斗法战力大增。`, 'gold'); }
+  checkLife(); save();
+}
+
+/* ---------- 轮回道果：跨轮回的永久天赋 ---------- */
+const DG_KEY = 'wendao-daoguo';
+let DG = { pts: 0, t: {} };
+try { DG = Object.assign(DG, JSON.parse(localStorage.getItem(DG_KEY) || '{}')); if (!DG.t) DG.t = {}; } catch (e) {}
+const dg = id => DG.t[id] || 0;
+const saveDG = () => { try { localStorage.setItem(DG_KEY, JSON.stringify(DG)); } catch (e) {} };
+const TALENTS = [
+  { id: 'xianyuan',   n: '仙缘', max: 5, c: 2, d: l => `入道时灵石 +${100 * l}` },
+  { id: 'suhui',      n: '宿慧', max: 3, c: 3, d: l => `入道时功法 +${l} 重` },
+  { id: 'huigen',     n: '慧根', max: 3, c: 4, d: l => `更容易测出上等灵根（+${80 * l}%）` },
+  { id: 'changsheng', n: '长生', max: 3, c: 3, d: l => `寿元上限 +${10 * l}%` },
+  { id: 'zhanhun',    n: '战魂', max: 5, c: 3, d: l => `战力 +${5 * l}%` },
+  { id: 'tianyan',    n: '天眼', max: 2, c: 4, d: l => `秘宝与异兽出现几率 +${50 * l}%` },
+  { id: 'daoxin',     n: '道心', max: 3, c: 2, d: l => `心魔增长 −${15 * l}%` },
+];
+function dgBuy(id) {
+  const T = TALENTS.find(x => x.id === id);
+  if (!T || dg(id) >= T.max || DG.pts < T.c) return;
+  DG.pts -= T.c; DG.t[id] = dg(id) + 1; saveDG();
+}
+/* 每个结局都给道果：证道最多，首次达成另有奖励，宗门声望也会折算 */
+function dgEarn(id) {
+  const g = (GOOD_END.includes(id) ? (id === 'hermit' ? 3 : 6) : 1) + (endings.includes(id) ? 0 : 3) + (S.zong ? Math.floor(S.zong.pres / 300) : 0);
+  DG.pts += g; saveDG();
+  return g;
+}
+
+/* ---------- 开宗立派：证道之后，自立门户 ---------- */
+/* 宗门的开销大多是寿元：开宗、传功、扩建都要燃寿。下一世可受前世宗门的祖师遗泽 */
+const LEGACY_KEY = 'wendao-legacy';
+let legacy = null;
+try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null'); } catch (e) {}
+const ZLV = [0, 100, 400, 1200, 3000, 8000, 20000];
+const zongLv = () => { let l = 0; while (l + 1 < ZLV.length && S.zong.pres >= ZLV[l + 1]) l++; return l + 1; };
+const zongCap = () => 2 + zongLv();
+const ZONG_NAMES = ['太虚宗', '玄天宗', '紫霄宫', '长生观', '问道山', '凌云阁', '归元宗', '太一门'];
+const ZB = [
+  { id: 'cang', n: '藏经阁',   d: l => `闭关弟子修炼 ×${(1 + .3 * l).toFixed(1)}` },
+  { id: 'danf', n: '炼丹房',   d: l => `每月产灵草约 ${fmt(.5 * l * (1 + realm()))} 株` },
+  { id: 'zhen', n: '护山大阵', d: l => `弟子出征更安全，大比胜算 +${6 * l}%，镇守声望 ×${(1 + .3 * l).toFixed(1)}` },
+];
+const ZM = [
+  { k: 'li',   n: '下山历练', m: 24, d: '带回灵石与灵草' },
+  { k: 'shou', n: '镇守山门', m: 36, d: '为宗门积攒声望' },
+  { k: 'bi',   n: '诸天大比', m: 12, d: '胜则声望大涨，败则修为受损' },
+];
+const zb = id => (S.zong && S.zong.b[id]) || 0;
+const zongFoundCost = () => ({ y: lifeCost(.1, 50), s: Math.round(stipend() * 120) });
+const zongRecCost = () => Math.round(stipend() * 30 * (1 + .5 * S.zong.ds.length));
+const zongTeachCost = () => lifeCost(.02, 5);
+const zongBuildCost = id => { const l = zb(id); return { y: lifeCost(.05 * (l + 1), 10), s: Math.round(stipend() * 80 * Math.pow(2, l)) }; };
+function zongDisciple() {
+  const ws = ROOTS.map(r => r.w);
+  let x = Math.random() * ws.reduce((a, b) => a + b, 0), r = 0;
+  while ((x -= ws[r]) > 0) r++;
+  const taken = S.zong ? S.zong.ds.map(d => d.name) : [];
+  let name;
+  do { name = pick(SURN) + pick(C_GIVEN); } while (taken.includes(name));
+  return { name, r, lv: 1, exp: 0, task: null };
+}
+function zongFound(name) {
+  const c = zongFoundCost();
+  if (S.zong || !S.dao || lifeLeft() <= c.y + 1 || S.stones < c.s) return;
+  S.ageM += c.y * 12; S.stones -= c.s;
+  S.zong = { name, pres: 0, ds: [], b: {} };
+  S.zong.ds.push(zongDisciple(), zongDisciple());
+  log(`你燃去 ${fmt(c.y)} 年寿元开辟山门，「${name}」自此立派。两名弟子闻名而来，拜入门下。`, 'gold');
+  fx(() => burst(name, '开宗立派'));
+  checkLife(); save();
+}
+function zongRecruit() {
+  const Z = S.zong, c = Z && zongRecCost();
+  if (!Z || Z.ds.length >= zongCap() || S.stones < c) return;
+  S.stones -= c;
+  const d = zongDisciple(); Z.ds.push(d);
+  log(`【${Z.name}】收${d.name}为徒，身具${ROOTS[d.r].n}。`, 'good'); save();
+}
+function zongTeach(i) {
+  const d = S.zong && S.zong.ds[i], y = zongTeachCost();
+  if (!d || d.task || lifeLeft() <= y + 1) return;
+  S.ageM += y * 12; d.lv++;
+  log(`燃去 ${fmt(y)} 年寿元为${d.name}传功灌顶，修为升至第 ${d.lv} 重。`, 'good');
+  checkLife(); save();
+}
+function zongSend(i, k) {
+  const d = S.zong && S.zong.ds[i], M = ZM.find(x => x.k === k);
+  if (!d || d.task || !M) return;
+  d.task = { k, left: M.m };
+  log(`【${S.zong.name}】派${d.name}${M.n}，${cn(M.m)}月后归来。`); save();
+}
+function zongBuild(id) {
+  const B = ZB.find(x => x.id === id), c = zongBuildCost(id);
+  if (!B || !S.zong || lifeLeft() <= c.y + 1 || S.stones < c.s) return;
+  S.ageM += c.y * 12; S.stones -= c.s; S.zong.b[id] = zb(id) + 1;
+  log(`燃去 ${fmt(c.y)} 年寿元开辟洞天，扩建${B.n}至${cn(zb(id))}阶。`, 'gold');
+  checkLife(); save();
+}
+function zongResolve(d) {
+  const Z = S.zong, k = d.task.k, head = `【${Z.name}】弟子${d.name}`;
+  d.task = null;
+  if (k === 'li') {
+    if (Math.random() < .12 * Math.max(.2, 1 - .15 * zb('zhen'))) { log(head + '下山历练时遇险，负伤而归，一无所获。', 'bad'); return; }
+    const s = Math.round(stipend() * 30 * (1 + .15 * d.lv)), h = Math.round((3 + d.lv) * (1 + realm() * .5));
+    S.stones += s; S.herbs += h;
+    log(head + `历练归来，带回灵石 ${fmt(s)}、灵草 ${h} 株。`, 'good');
+  } else if (k === 'shou') {
+    const p = Math.round(6 * d.lv * (1 + .3 * zb('zhen'))); Z.pres += p;
+    log(head + `镇守山门期满，宗门声望 +${p}。`, 'good');
+  } else if (Math.random() < clamp(.25 + .05 * d.lv + .06 * zb('zhen'), .1, .92)) {
+    const p = 30 * d.lv; Z.pres += p;
+    log(head + `在诸天大比中夺魁，宗门声望 +${p}！`, 'gold');
+  } else {
+    d.exp = 0; Z.pres += 3;
+    log(head + '在诸天大比中落败，修为受损，回山闭关。', 'bad');
+  }
+}
+/* 宗门随岁月运转：弟子闭关长修为、出征的到期归来、丹房产草 */
+function zongTick(m) {
+  const Z = S.zong, lv0 = zongLv();
+  if (zb('danf')) {
+    Z.herbAcc = (Z.herbAcc || 0) + .5 * zb('danf') * (1 + realm()) * m;
+    const h = Math.floor(Z.herbAcc);
+    if (h > 0) { Z.herbAcc -= h; S.herbs += h; }
+  }
+  Z.ds.forEach(d => {
+    if (d.task) { if ((d.task.left -= m) <= 0) zongResolve(d); return; }
+    d.exp += m * ROOTS[d.r].mul * (1 + .3 * zb('cang')) / 12;
+    while (d.exp >= 10 * d.lv) { d.exp -= 10 * d.lv; d.lv++; }
+  });
+  if (zongLv() > lv0) log(`【${Z.name}】声望远播，宗门晋为${cn(zongLv())}阶，可多收一名弟子。`, 'gold');
+}
 
 /* 寻宝丹：之后几场斗法得胜，每场耗去一份药力，掉落更多更好 */
 function useLuck() {
@@ -899,6 +1089,7 @@ function tick(sec) {
 
 /* 随岁月流逝的事：宗门任务刷新、道侣情谊 */
 function monthly(m) {
+  if (S.zong) zongTick(m);
   const sc = S.sect;
   if (!sc.left) {
     if ((sc.refM -= m) <= 0) { genBoard(); sc.refM = 36; }
@@ -948,12 +1139,10 @@ function worldEvent() {
   else { const h = 1 + realm(); S.herbs += h; log(`洞府外灵田成熟，收得灵草 ${h} 株。`, 'good'); }
 }
 
+/* 点阵盘只有光效，不再加修为 */
 function meditate() {
-  if (busy()) return;
-  const x = rate() * .5 + 1;
-  gainXp(x); S.clicks++;
+  if (!S.started || S.over) return;
   ripple(.9);
-  floatText('+' + fmt(x));
 }
 
 /* 证道后选择暂不转世：顶级境界的突破键变成「转世」，点两下才生效 */
@@ -961,7 +1150,14 @@ let reincArm = 0;
 function breakthrough() {
   if (busy()) return;
   if (S.dao && S.lv === TOP) {
-    if (Date.now() - reincArm < 3000) { reincArm = 0; reincarnate(); } else reincArm = Date.now();
+    if (Date.now() - reincArm < 3000) {
+      reincArm = 0;
+      /* 证道后自行转世：宗门声望照样折算成道果 */
+      const g = S.zong ? Math.floor(S.zong.pres / 300) : 0;
+      if (g) { DG.pts += g; saveDG(); }
+      reincarnate();
+      if (g) log(`前世宗门「${legacy ? legacy.name : ''}」声望远播，化作道果 ${g} 枚。`, 'gold');
+    } else reincArm = Date.now();
     return;
   }
   if (S.xp < req(S.lv)) return;
@@ -969,6 +1165,7 @@ function breakthrough() {
   const major = nextMajor(), p = chance(), from = LEVELS[S.lv].name;
   const usedPill = major && S.bpill > 0;
   if (usedPill) S.bpill = 0;
+  if (major) S.burnBt = false;
   if (Math.random() < p) {
     const cap0 = compCap();
     S.lv++; S.xp = 0;
@@ -1906,6 +2103,7 @@ function closedDoor(sec) {
   S.stones += stipend() * M;
   S.injT = Math.max(0, S.injT - M * (isPath('ti') ? 2 : 1)); S.tideT = Math.max(0, S.tideT - M);
   S.peiT = Math.max(0, S.peiT - M); S.jinT = Math.max(0, S.jinT - M);
+  if (S.zong) zongTick(M);
   const sc = S.sect;
   if (!sc.left) { sc.refM -= M; if (sc.refM <= 0) { genBoard(); sc.refM = 36; } sc.tourneyM -= M; }
   promote();
@@ -2024,6 +2222,7 @@ function endGame(id, ctx) {
   S.over = id;
   S.endCtx = Object.assign({ name: S.name, lv: LEVELS[S.lv].name, p: pNames() || (S.comps[0] ? S.comps[0].name : '') }, ctx || {});
   S.pending = null;
+  S.dgGain = dgEarn(id);
   if (!endings.includes(id)) {
     endings.push(id);
     try { localStorage.setItem(END_KEY, JSON.stringify(endings)); } catch (e) {}
@@ -2039,7 +2238,7 @@ function reincarnate() {
 
 /* ---------- 灵根测验 ---------- */
 function rollRoot() {
-  const boost = 1 + .6 * S.reinc;
+  const boost = 1 + .6 * S.reinc + .8 * dg('huigen');
   const ws = ROOTS.map((r, i) => r.w * (i < 3 ? boost : 1));
   let x = Math.random() * ws.reduce((a, b) => a + b, 0), i = 0;
   while ((x -= ws[i]) > 0) i++;
@@ -2094,6 +2293,38 @@ function showModal() {
       <div class="row"><button class="btn" data-act="close" type="button">合上</button></div>`;
     return;
   }
+  if (ui === 'burn') {
+    m.hidden = false;
+    c.innerHTML = `<h2>燃寿</h2>
+      <p class="m">寿元尚余 ${fmt(Math.max(0, lifeLeft()))} 年。燃去的寿元不会回来，却能换来眼下的机缘。寿元耗尽便会坐化，量力而行。</p>
+      <div class="opts">${BURN.map(B => { const why = burnWhy(B);
+        return `<button class="btn" data-act="burn" data-k="${B.k}" type="button" ${why ? 'disabled' : ''}>${B.n} · 燃寿 ${fmt(lifeCost(B.p, B.min))} 年<small>${why ? why + '。' : ''}${B.d}</small></button>`; }).join('')}</div>
+      <div class="row"><button class="btn" data-act="close" type="button">合上</button></div>`;
+    return;
+  }
+  if (ui === 'daoguo') {
+    m.hidden = false;
+    c.innerHTML = `<h2>轮回天赋</h2>
+      <p class="m">现有道果 <b style="color:var(--gold)">${DG.pts}</b>。达成任何结局都会得到道果，证道最多，首次达成的结局另有奖励，开宗立派的声望也会折算。天赋永久生效，转世后也保留。</p>
+      <div class="list">${TALENTS.map(T => { const l = dg(T.id), full = l >= T.max;
+        return `<div class="item"><h3>${T.n}<span class="chip ${l ? 'gold' : ''}">${l} / ${T.max}</span></h3>
+          <div class="act"><button class="btn sm" data-act="dg-buy" data-k="${T.id}" type="button" ${full || DG.pts < T.c ? 'disabled' : ''}>${full ? '已满' : '参悟'}<small>道果 ${T.c}</small></button></div>
+          <p>${l ? '当前：' + T.d(l) + (full ? '' : '。下一重：' + T.d(l + 1)) : T.d(1)}</p></div>`; }).join('')}</div>
+      <div class="row"><button class="btn" data-act="close" type="button">合上</button></div>`;
+    return;
+  }
+  if (ui === 'zong') {
+    m.hidden = false;
+    const zc = zongFoundCost();
+    c.innerHTML = `<h2>开宗立派</h2>
+      <p>你已证得大道，却未随天道而去。是时候在这方天地留下自己的道统了。</p>
+      <label for="zong-name">宗门名号</label>
+      <input id="zong-name" maxlength="6" value="${pick(ZONG_NAMES)}" autocomplete="off">
+      <p class="m">需燃寿 ${fmt(zc.y)} 年、灵石 ${fmt(zc.s)}。名号立下后不可更改，下一世还能受这座宗门的祖师遗泽。</p>
+      <div class="row"><button class="btn" data-act="close" type="button">再想想</button>
+      <button class="btn gold ready" data-act="zong-ok" type="button" ${lifeLeft() <= zc.y + 1 || S.stones < zc.s ? 'disabled' : ''}>开山立派</button></div>`;
+    return;
+  }
   if (ui === 'mibao') {
     m.hidden = false;
     c.innerHTML = `<h2>秘宝录</h2>
@@ -2101,7 +2332,7 @@ function showModal() {
       <div class="elist">${MIBAO.map(M => {
         const got = mbBook.includes(M.id);
         return `<div class="end mbx ${got ? '' : 'locked'}">${got ? `<img class="mb-ic" src="img/mb/${M.id}.jpg" alt="" onerror="this.remove()">` : ''}
-          <div><b>${got ? M.n : '？？？'}</b><span>${got ? M.d + (mb(M.id) ? ' · 此世已得' : '') : M.hint}</span></div></div>`;
+          <div><b>${got ? M.n : tianji.includes(M.id) ? M.n + '（天机）' : '？？？'}</b><span>${got ? M.d + (mb(M.id) ? ' · 此世已得' : '') : tianji.includes(M.id) ? MB_HOW[M.id] : M.hint}</span></div></div>`;
       }).join('')}</div>
       <div class="row"><button class="btn" data-act="close" type="button">合上</button></div>`;
     return;
@@ -2126,7 +2357,9 @@ function showModal() {
       <p>${esc(END_TEXT[E.id](S.endCtx || { name: S.name, lv: LEVELS[S.lv].name, p: '', k: '九', mon: '妖兽', place: '荒野' }))}</p>
       ${statsHtml()}
       <p class="m">转世后：功法记忆保留一半，修炼速度永久 +25%，冲关成功率 +3%，更易测出上等灵根。</p>
-      <div class="row"><button class="btn" data-act="gallery" type="button">结局图鉴 ${endings.length}/${ENDINGS.length}</button>
+      <p class="m" style="color:var(--gold)">此世获得道果 +${S.dgGain || 0}，现有道果 ${DG.pts}，可在「轮回天赋」中参悟永久天赋。</p>
+      <div class="row"><button class="btn" data-act="daoguo" type="button">轮回天赋<small>道果 ${DG.pts}</small></button>
+      <button class="btn" data-act="gallery" type="button">结局图鉴 ${endings.length}/${ENDINGS.length}</button>
       ${good ? `<button class="btn" data-act="stay" type="button">暂不转世<small>以此身继续逍遥</small></button>` : ''}
       <button class="btn gold ready" data-act="reinc" type="button">转世轮回</button></div>`;
     return;
@@ -2145,6 +2378,9 @@ function showModal() {
       <div class="sexrow"><div class="meet-pt">${playerBust('pv')}</div>
         <div class="row"><button class="btn ${S.sex === 'm' ? 'gold' : ''}" data-act="sex" data-v="m" type="button">男修</button>
         <button class="btn ${S.sex === 'f' ? 'gold' : ''}" data-act="sex" data-v="f" type="button">女修</button></div></div>
+      ${legacy ? `<label class="legacy" for="use-legacy"><input type="checkbox" id="use-legacy" ${S.useLegacy !== false ? 'checked' : ''}>
+        受前世所创「${esc(legacy.name)}」的祖师遗泽：入道时灵石 +${fmt(300 * legacy.lv)}、功法 +1 重，宗门月俸 ×1.5</label>` : ''}
+      ${DG.pts || Object.keys(DG.t).length ? `<button class="btn" data-act="daoguo" type="button">轮回天赋<small>道果 ${DG.pts}，入道前可参悟</small></button>` : ''}
       <div class="rootbox" id="rootbox">${R
         ? `<div class="rn" style="color:${S.root === 'wei' ? 'var(--muted)' : R.mul >= 1.8 ? 'var(--gold)' : 'var(--jade)'}">${R.n}</div>
            <div class="rd">${S.els}　·　修炼速度 ×${R.mul}</div><div class="rd">${R.d}</div>`
@@ -2215,6 +2451,8 @@ function renderStatus() {
   if (S.jinT > 0) chips.push(`<span class="chip gold">金刚 ${Math.ceil(S.jinT)} 月</span>`);
   if (S.xunbao > 0) chips.push(`<span class="chip gold">寻宝 ×${S.xunbao}</span>`);
   if (S.huanhun) chips.push('<span class="chip gold">九转还魂丹</span>');
+  if (S.burnBt) chips.push('<span class="chip red">燃寿冲关</span>');
+  if (S.burnFight) chips.push('<span class="chip red">燃寿斗法</span>');
   if (!chips.length) chips.push('<span class="small">气息平稳</span>');
   setHtml('#s-chips', chips.join(''));
   setHtml('#s-kv', `
@@ -2424,9 +2662,39 @@ function sideGear() {
     <h3 class="sec-h">储物袋 ${S.bag.length} / ${BAG_CAP}</h3><div class="list">${bag || '<p class="note">空空如也。</p>'}</div>
     ${!free && S.bag.length ? '<p class="note" style="margin-top:8px">三个位置都满了，先卸下一件才能换上新的。</p>' : ''}`;
 }
+function sideZong() {
+  if (!S.dao) return `<div class="sum"><span class="rank">开宗立派</span><p class="note">证道之后选择「暂不转世」，便可开宗立派、自立门户。</p></div>`;
+  if (!S.zong) {
+    const zc = zongFoundCost();
+    return `<div class="sum"><span class="rank">开宗立派</span>
+      <p class="note">以道祖之身开辟山门，招收弟子、扩建殿宇。宗门的一切都要以寿元为代价：开宗、传功、开辟洞天，都得燃寿。</p>
+      <p class="note">开宗需燃寿 ${fmt(zc.y)} 年、灵石 ${fmt(zc.s)}。寿元尚余 ${fmt(Math.max(0, lifeLeft()))} 年。</p>
+      <div class="btnrow"><button class="btn gold ready" data-act="zong-found" type="button">开宗立派</button></div></div>`;
+  }
+  const Z = S.zong, L = zongLv(), full = Z.ds.length >= zongCap(), rc = zongRecCost(), tc = zongTeachCost();
+  const ds = Z.ds.map((d, i) => {
+    const M = d.task && ZM.find(x => x.k === d.task.k);
+    return `<div class="item"><h3>${esc(d.name)}<span class="chip">${ROOTS[d.r].n}</span><span class="chip gold">第 ${d.lv} 重</span></h3>
+      <div class="meta">${M ? `${M.n}中，还有 ${Math.ceil(d.task.left)} 月归来` : `闭关修炼中 · 下一重 ${Math.floor(d.exp / (10 * d.lv) * 100)}%`}</div>
+      ${M ? '' : `<div class="btnrow">${ZM.map(x => `<button class="btn sm" data-act="zong-send" data-i="${i}" data-k="${x.k}" type="button">${x.n}<small>${cn(x.m)}月 · ${x.d}</small></button>`).join('')}
+        <button class="btn sm gold" data-act="zong-teach" data-i="${i}" type="button" ${lifeLeft() <= tc + 1 ? 'disabled' : ''}>传功<small>燃寿 ${fmt(tc)} 年 · 升一重</small></button></div>`}</div>`;
+  }).join('');
+  const bs = ZB.map(B => { const l = zb(B.id), c = zongBuildCost(B.id), no = lifeLeft() <= c.y + 1 || S.stones < c.s;
+    return `<div class="item"><h3>${B.n}<span class="chip ${l ? 'gold' : ''}">${l ? cn(l) + '阶' : '未建'}</span></h3>
+      <div class="act"><button class="btn sm" data-act="zong-build" data-k="${B.id}" type="button" ${no ? 'disabled' : ''}>${l ? '扩建' : '兴建'}</button>
+      <span class="cost">燃寿 ${fmt(c.y)} 年</span><span class="cost ${S.stones < c.s ? 'no' : ''}">灵石 ${fmt(c.s)}</span></div>
+      <p>${l ? '当前：' + B.d(l) + '。下一阶：' : '建成后：'}${B.d(l + 1)}</p></div>`; }).join('');
+  return `<div class="sum"><div class="top"><span class="rank">${esc(Z.name)}</span><span class="chip gold">${cn(L)}阶宗门</span></div>
+    <p class="note">声望 ${fmt(Z.pres)}${L < ZLV.length ? ` / ${fmt(ZLV[L])}（晋阶后可多收一名弟子）` : '，已至巅峰'}。弟子 ${Z.ds.length} / ${zongCap()}。寿元尚余 ${fmt(Math.max(0, lifeLeft()))} 年。</p>
+    <p class="note">转世时宗门声望会折算成道果；下一世入道时，可受这座宗门的祖师遗泽。</p></div>
+    <h3 class="sec-h">弟子</h3><div class="list">${ds}</div>
+    <div class="btnrow" style="margin-top:8px"><button class="btn sm" data-act="zong-rec" type="button" ${full || S.stones < rc ? 'disabled' : ''}>${full ? '弟子已满' : '广开山门 · 收徒'}<small>灵石 ${fmt(rc)}</small></button></div>
+    <h3 class="sec-h">殿宇</h3><div class="list">${bs}</div>`;
+}
 function renderSide() {
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
-  const f = { trip: sideTrip, tower: sideTower, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill, gear: sideGear }[tab] || sideTrip;
+  $('#tab-zong').hidden = !S.dao;
+  const f = { trip: sideTrip, tower: sideTower, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill, gear: sideGear, zong: sideZong }[tab] || sideTrip;
   setHtml('#side-body', f());
 }
 
@@ -2807,6 +3075,11 @@ document.addEventListener('visibilitychange', () => {
 function save() {
   if (!document.hidden) S.t = Date.now();
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
+  /* 开过宗的话，记下宗门留给后世 */
+  if (S.zong) {
+    legacy = { name: S.zong.name, lv: zongLv(), pres: S.zong.pres };
+    try { localStorage.setItem(LEGACY_KEY, JSON.stringify(legacy)); } catch (e) {}
+  }
 }
 function settleAway() {
   const sec = (Date.now() - (S.t || Date.now())) / 1000;
@@ -2865,6 +3138,15 @@ document.addEventListener('click', e => {
   else if (a === 'gear-sell') act('', () => gearSell(+i));
   else if (a === 'bt-toggle') setBtSkip(!btSkip);
   else if (a === 'close') { ui = null; showModal(); }
+  else if (a === 'burn') { act('', () => burn(k)); showModal(); }
+  else if (a === 'daoguo') { const l = $('#use-legacy'); if (l) S.useLegacy = l.checked; ui = 'daoguo'; showModal(); }
+  else if (a === 'dg-buy') { dgBuy(k); showModal(); }
+  else if (a === 'zong-found') { ui = 'zong'; showModal(); }
+  else if (a === 'zong-ok') { const n = ($('#zong-name').value.trim() || pick(ZONG_NAMES)).slice(0, 6); act('', () => zongFound(n)); ui = null; showModal(); }
+  else if (a === 'zong-rec') act('', zongRecruit);
+  else if (a === 'zong-teach') act('', () => zongTeach(+i));
+  else if (a === 'zong-send') act('', () => zongSend(+i, k));
+  else if (a === 'zong-build') act('', () => zongBuild(k));
   else if (a === 'test') testRoot(false);
   else if (a === 'reroll') testRoot(true);
   else if (a === 'begin') {
@@ -2873,6 +3155,16 @@ document.addEventListener('click', e => {
     log(S.reinc
       ? `第${cn(S.reinc + 1)}世，${S.name}再度踏入仙途，身具${root().n}（${S.els}）。`
       : `${S.name}拜入${SECT}外门，身具${root().n}（${S.els}），自此踏上仙途。`, 'gold');
+    /* 轮回天赋与前世宗门的遗泽，在入道这一刻兑现 */
+    if (dg('xianyuan') || dg('suhui')) {
+      S.stones += 100 * dg('xianyuan'); S.gongfa += dg('suhui');
+      log(`轮回天赋觉醒：${dg('xianyuan') ? '灵石 +' + 100 * dg('xianyuan') : ''}${dg('xianyuan') && dg('suhui') ? '、' : ''}${dg('suhui') ? '功法 +' + dg('suhui') + ' 重' : ''}。`, 'gold');
+    }
+    const ul = $('#use-legacy');
+    if (legacy && ul && ul.checked) {
+      S.legacy = legacy.name; S.stones += 300 * legacy.lv; S.gongfa++;
+      log(`前世所创「${legacy.name}」的弟子寻到了你的转世，奉上祖师遗泽：灵石 ${fmt(300 * legacy.lv)}、一卷功法心得。`, 'gold');
+    }
     save(); showModal();
   }
   else if (a === 'reinc') reincarnate();
@@ -2890,7 +3182,8 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'dao-name') S.name = e.target.value.trim().slice(0, 6) || S.name;
 });
-$('#b-med').addEventListener('click', meditate);
+document.addEventListener('change', e => { if (e.target.id === 'use-legacy') S.useLegacy = e.target.checked; });
+$('#b-med').addEventListener('click', () => { if (busy()) return; ui = 'burn'; showModal(); });
 $('#b-sex').addEventListener('click', () => { S.sex = S.sex === 'f' ? 'm' : 'f'; save(); renderStatus(); if (!S.started) showModal(); });
 $('#b-break').addEventListener('click',() => { act('', breakthrough); if (S.pending) showModal(); renderStatus(); renderSide(); renderLog(); });
 disc.addEventListener('pointerdown', e => { e.preventDefault(); meditate(); });

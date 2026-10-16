@@ -614,6 +614,7 @@ function fresh(prev) {
     tower: 0, zhanyi: 0, t: Date.now(),
     qy: {}, qyTry: {}, flags: {}, path: '', dao: false,
     bag: [], eq: [null, null, null],
+    peiT: 0, jinT: 0, xunbao: 0, huanhun: 0, wudao: 0,
   };
 }
 let S = fresh(null);
@@ -640,7 +641,7 @@ const earlyBoost = () => Math.max(1, 5 - .25 * S.lv);
 function rate(noBuff) {
   let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * pBoost() * (S.sect.free ? 1.2 : 1)
     * earlyBoost() * (1 + gear('xiu') / 100);
-  if (!noBuff) r *= (S.injT > 0 ? .5 : 1) * (S.tideT > 0 ? 2 : 1);
+  if (!noBuff) r *= (S.injT > 0 ? .5 : 1) * (S.tideT > 0 ? 2 : 1) * (S.peiT > 0 ? 1.5 : 1);
   return r;
 }
 /* ---------- 流派：筑基后择道，每世重选 ---------- */
@@ -677,15 +678,26 @@ const FB_SK = [null,
 const sk = i => S.fabao >= i;
 const fabaoMul = () => 1 + (isPath('jian') ? .225 : .15) * S.fabao;
 const injMul = () => S.injT > 0 ? (isPath('ti') || sk(3) ? .85 : .7) : 1;
-/* 混沌钟·护主：每世一次免死。返回 true 表示这一死被挡下了 */
+/* 免死：先由混沌钟护主（每世一次），钟已碎再看有没有九转还魂丹。
+   返回 'bell' / 'dan' 表示这一死被挡下了，返回 false 表示挡不住 */
 function bell(why) {
-  if (!sk(9) || S.flags.bell) return false;
-  S.flags.bell = true;
-  log({ age: '寿元将尽之际，混沌钟长鸣一声，定住了光阴。钟身裂开一道缝，你多出六十年寿元。',
-    fall: '生死一线，混沌钟自行飞出，替你挡下了致命一击，钟身碎作两半。',
-    trib: '护体崩碎的刹那，混沌钟罩住了你，替你扛下这道天雷，随后寸寸碎裂。',
-    qi: '真元逆流之际，混沌钟当头罩下，钟声震散了心魔，钟身也就此碎裂。' }[why], 'gold');
-  return true;
+  if (sk(9) && !S.flags.bell) {
+    S.flags.bell = true;
+    log({ age: '寿元将尽之际，混沌钟长鸣一声，定住了光阴。钟身裂开一道缝，你多出六十年寿元。',
+      fall: '生死一线，混沌钟自行飞出，替你挡下了致命一击，钟身碎作两半。',
+      trib: '护体崩碎的刹那，混沌钟罩住了你，替你扛下这道天雷，随后寸寸碎裂。',
+      qi: '真元逆流之际，混沌钟当头罩下，钟声震散了心魔，钟身也就此碎裂。' }[why], 'gold');
+    return 'bell';
+  }
+  if (S.huanhun > 0) {
+    S.huanhun = 0;
+    log({ age: '寿元耗尽的一刻，九转还魂丹在丹田中化开，枯竭的生机重新涌回，你多出六十年寿元。',
+      fall: '气绝之际，九转还魂丹自行化开，你从鬼门关前被拉了回来。',
+      trib: '护体崩碎的刹那，九转还魂丹化作一股磅礴生机，让你硬生生扛住了这道天雷。',
+      qi: '真元逆流之际，九转还魂丹化开，药力护住了心脉。' }[why], 'gold');
+    return 'dan';
+  }
+  return false;
 }
 const costGongfa = () => Math.round(25 * Math.pow(1.85, S.gongfa));
 const costArray = () => Math.round(40 * Math.pow(1.95, S.array));
@@ -767,6 +779,11 @@ function dropItem(lvl, minQ, src) {
   log(`${src}得${Q.n}灵宝「${it.name}」：${affText(it)}。`, it.q >= 3 ? 'gold' : 'good');
   if (it.q >= 3) fx(() => burst(it.name, `${Q.n} · 宝光冲天`, 'q' + it.q));
 }
+/* 寻宝丹：之后几场斗法得胜，每场耗去一份药力，掉落更多更好 */
+function useLuck() {
+  if (S.xunbao > 0) { S.xunbao--; return true; }
+  return false;
+}
 function gearEquip(i) {
   const it = S.bag[i], k = S.eq.indexOf(null);
   if (!it || k < 0) return;
@@ -801,6 +818,8 @@ function tick(sec) {
   S.stones += stipend() * dt;
   if (S.injT > 0 && (S.injT -= dt * (isPath('ti') ? 2 : 1)) <= 0) { S.injT = 0; log('伤势痊愈，经脉通畅。', 'good'); }
   if (S.tideT > 0 && (S.tideT -= dt) <= 0) { S.tideT = 0; log('灵气潮汐退去。'); }
+  if (S.peiT > 0 && (S.peiT -= dt) <= 0) { S.peiT = 0; log('培元丹的药力散尽了。'); }
+  if (S.jinT > 0 && (S.jinT -= dt) <= 0) { S.jinT = 0; log('金刚丹的药力散尽，肉身恢复如常。'); }
   monthly(dt);
   if ((S.evCD -= dt) <= 0) { act('', worldEvent); S.evCD = rnd(45, 95); }
   if (S.mo >= 100 && !S.pending) S.pending = { id: 'xinmo' };
@@ -887,7 +906,7 @@ function breakthrough() {
     const pa = partner();
     partners().forEach(c => { c.lv = Math.max(c.lv, S.lv - 1); });
     if (major) {
-      S.yanshou = 0; addMo(8);
+      S.yanshou = 0; S.wudao = 0; addMo(8);
       log(`${usedPill ? '服下' + REALMS[realm()].pill + '，' : ''}${pa ? pNames() + '在旁护法，' : ''}天地灵气倒灌，成功踏入${LEVELS[S.lv].name}！寿元增至 ${maxLifeY()} 年。境界愈高，心魔愈重。`, 'gold');
       if (compCap() > cap0) log(`道心愈阔，此后可与 ${compCap()} 位知己道侣同行。`, 'rose');
       ripple(3, 'gold');
@@ -918,7 +937,9 @@ function breakthrough() {
 
 /* 斗法失利：若旧伤未愈，有陨落之危 */
 function defeat(place, mon, head) {
-  /* 体修肉身强横，斗法落败绝不陨落；混沌钟可护主一次 */
+  /* 金刚丹护体期间：落败不负伤也不陨落 */
+  if (S.jinT > 0) return false;
+  /* 体修肉身强横，斗法落败绝不陨落；混沌钟、九转还魂丹可各挡一死 */
   if (S.injT > 0 && !isPath('ti') && Math.random() < .2) {
     log(head + `旧伤未愈，又遭${mon}重创……`, 'bad');
     if (bell('fall')) { S.injT = Math.max(S.injT, 90); return false; }
@@ -959,12 +980,13 @@ function trip(i) {
       const s = Math.round(base * rnd(1.2, 2) * (sk(2) ? 1.3 : 1)), h = Math.round(ri(0, 2) * (L.t + 1) * (isPath('dan') ? 1.5 : 1) * caoMul());
       S.stones += s; S.herbs += h; gainXp(req(S.lv) * .05);
       log(head + `遭遇${mon}，激战一场将其斩杀，得灵石 ${fmt(s)}${h ? '、灵草 ' + h + ' 株' : ''}。`, 'good');
-      if (Math.random() < .18) dropItem(L.t, 0, `${mon}的巢穴中，`);
+      const luck = useLuck();
+      if (Math.random() < (luck ? .6 : .18)) dropItem(L.t + (luck ? 1 : 0), 0, `${mon}的巢穴中，`);
     } else {
       if (defeat(L.n, mon, head)) return;
       const lost = Math.round(S.stones * .2);
       S.stones -= lost;
-      log(head + `遭遇${mon}，不敌负伤遁走，遗失灵石 ${fmt(lost)}。`, 'bad');
+      log(head + `遭遇${mon}，不敌${S.jinT > 0 ? '，凭金刚丹护体全身而退' : '负伤遁走'}，遗失灵石 ${fmt(lost)}。`, 'bad');
     }
   } else if (r < 86) {
     gainXp(req(S.lv) * .3);
@@ -1002,14 +1024,14 @@ function doTask(j) {
   if (T.fight) queueBattle({ win: !lose, P: power(), E: taskFoe(T.fight), name: t.mon, where: T.n });
   if (lose) {
     if (defeat(F().near, t.mon, head)) return;
-    log(head + `与${t.mon}交手落败，负伤而归，任务未成。`, 'bad');
+    log(head + `与${t.mon}交手落败，${S.jinT > 0 ? '金刚丹护体未曾受伤' : '负伤而归'}，任务未成。`, 'bad');
   } else {
     const ts = Math.round(t.s * lingMul());
     sc.contrib += t.c; sc.total += t.c; S.stones += ts; S.herbs += t.h;
     if (T.x) gainXp(req(S.lv) * T.x);
     if (T.mo) addMo(T.mo);
     log(head + (T.fight ? `斩除${t.mon}，` : '') + `得贡献 ${fmt(t.c)}、灵石 ${fmt(ts)}${t.h ? '、灵草 ' + t.h + ' 株' : ''}。`, 'good');
-    if (T.fight && Math.random() < .08) dropItem(realm() / 2, 0, '');
+    if (T.fight) { const luck = useLuck(); if (Math.random() < (luck ? .5 : .08)) dropItem(realm() / 2 + (luck ? 1 : 0), 0, ''); }
     promote();
   }
   maybeMeet(F().place, .06);
@@ -1361,8 +1383,8 @@ const EVENTS = {
         dropItem(realm() / 2 + 1, 2, '另得');
         promote();
       } else {
-        S.injT = Math.max(S.injT, 40);
-        log(`${nm}中惜败，负了些轻伤。`, 'bad');
+        if (S.jinT <= 0) S.injT = Math.max(S.injT, 40);
+        log(`${nm}中惜败${S.jinT > 0 ? '，好在金刚丹护体，毫发无伤' : '，负了些轻伤'}。`, 'bad');
       }
     },
   },
@@ -1686,6 +1708,18 @@ function pills() {
   }
   out.push({ id: 'zhan', n: '战意丹', d: '下一次挑战镇妖塔时战力 ×1.3，无论胜负皆会耗去。',
     h: 2 + r, s: Math.round(10 * Math.pow(1.9, r)), ok: !S.zhanyi, why: '已备好一枚' });
+  out.push({ id: 'pei', n: '培元丹', d: `六十个月内修炼速度 ×1.5，重复服用只刷新时长${S.peiT > 0 ? `（药力尚余 ${Math.ceil(S.peiT)} 月）` : ''}。`,
+    h: 4 + 2 * r, s: Math.round(20 * Math.pow(2, r)), ok: true });
+  out.push({ id: 'wu', n: '悟道丹', d: `服下闭关参悟，功法直接精进一重。药力霸道，每一大境界限服一枚（已服 ${S.wudao}）。`,
+    h: 10 + 5 * r, s: Math.round(80 * Math.pow(2.4, r)), ok: S.wudao < 1, why: '此境已服' });
+  out.push({ id: 'xun', n: '寻宝丹', d: `之后三场斗法得胜，灵宝掉率大增、品质更高${S.xunbao > 0 ? `（尚余 ${S.xunbao} 场）` : ''}。`,
+    h: 3 + r, s: Math.round(25 * Math.pow(2, r)), ok: S.xunbao <= 0, why: '药力未散' });
+  out.push({ id: 'jin', n: '金刚丹', d: `二十四个月内肉身如金刚，斗法落败既不负伤，也不会陨落${S.jinT > 0 ? `（药力尚余 ${Math.ceil(S.jinT)} 月）` : ''}。`,
+    h: 3 + 2 * r, s: Math.round(18 * Math.pow(2, r)), ok: true });
+  if (alive().length) out.push({ id: 'tong', n: '同心丹', d: '与知己、道侣分服，每人情谊 +15。',
+    h: 5 + 2 * r, s: Math.round(30 * Math.pow(2, r)), ok: alive().some(c => c.fav < 100), why: '情谊已满' });
+  if (r >= 3) out.push({ id: 'hun', n: '九转还魂丹', d: '身死之时自行化开，起死回生一次（混沌钟若还在，先由钟护主）。至多备一枚。',
+    h: 60, s: Math.round(20000 * Math.pow(1.8, Math.max(0, r - 3))), ok: !S.huanhun, why: '已备一枚' });
   if (DAN()) out.forEach(p => { p.h = Math.max(1, Math.round(p.h * .6)); p.s = Math.max(1, Math.round(p.s * .6)); });
   return out;
 }
@@ -1702,6 +1736,12 @@ function brew(id) {
   if (id === 'po') { S.bpill = 1; log(`丹成！${P.n}一枚，静待冲关之时。`, 'gold'); }
   if (id === 'due') { S.duepill++; log('炼成渡厄丹一枚，以备天劫。', 'gold'); }
   if (id === 'zhan') { S.zhanyi = 1; log('炼成战意丹一枚，丹香中隐有金戈之声。', 'good'); }
+  if (id === 'pei') { S.peiT = 60; log('服下培元丹，元气充盈，修炼事半功倍。', 'good'); }
+  if (id === 'wu') { S.wudao++; S.gongfa++; log(`服下悟道丹闭关七日，功法精进至《${gongfaName(S.gongfa)}》。`, 'gold'); }
+  if (id === 'xun') { S.xunbao = 3; log('服下寻宝丹，眼中泛起淡淡金光，看得见宝物的气息了。', 'good'); }
+  if (id === 'jin') { S.jinT = 24; log('服下金刚丹，周身泛起一层淡金色的光泽。', 'good'); }
+  if (id === 'tong') { alive().forEach(c => { c.fav = Math.min(100, c.fav + 15); }); log(`与${alive().map(c => c.name).join('、')}分服同心丹，彼此心意相通。`, 'rose'); }
+  if (id === 'hun') { S.huanhun = 1; log('九转还魂丹炼成，丹成之时，洞府上空雷云滚滚。', 'gold'); }
   save();
 }
 
@@ -1740,8 +1780,11 @@ function climb() {
     const rec = f > towerBest;
     if (rec) { towerBest = f; try { localStorage.setItem(TOWER_KEY, String(f)); } catch (e) {} }
     log(head + `斩${mon}，得灵石 ${fmt(L.s)}${L.h ? '、灵草 ' + L.h + ' 株' : ''}${extra}。${rec && f > 1 ? '已破历代最高！' : ''}`, L.big ? 'gold' : 'good');
-    if (boss) dropItem(f / 10 + 1, 1, `${mon}的遗宝中，`);
-    else if (Math.random() < .05) dropItem(Math.floor(f / 10), 0, '塔中拾得，');
+    const luck = useLuck();
+    if (boss) dropItem(f / 10 + 1 + (luck ? 1 : 0), 1, `${mon}的遗宝中，`);
+    else if (Math.random() < (luck ? .45 : .05)) dropItem(Math.floor(f / 10) + (luck ? 1 : 0), 0, '塔中拾得，');
+  } else if (S.jinT > 0) {
+    log(head + `不敌${mon}，被塔灵送出塔外。金刚丹护体，未曾受伤。`, 'bad');
   } else {
     S.injT = Math.max(S.injT, 24);
     log(head + `不敌${mon}，被塔灵送出塔外，负伤二十四月。`, 'bad');
@@ -1783,6 +1826,7 @@ function closedDoor(sec) {
   S.ageM += age;
   S.stones += stipend() * M;
   S.injT = Math.max(0, S.injT - M * (isPath('ti') ? 2 : 1)); S.tideT = Math.max(0, S.tideT - M);
+  S.peiT = Math.max(0, S.peiT - M); S.jinT = Math.max(0, S.jinT - M);
   const sc = S.sect;
   if (!sc.left) { sc.refM -= M; if (sc.refM <= 0) { genBoard(); sc.refM = 36; } sc.tourneyM -= M; }
   promote();
@@ -1836,9 +1880,11 @@ function strike() {
   let txt = `第${cn(trib.k)}道天雷落下！护体 −${Math.round(dmg)}`, wait = 1300;
   const p = partners().sort((a, b) => b.fav - a.fav)[0];
   /* 混沌钟先于道侣护主 */
-  if (trib.hp <= 0 && bell('trib')) {
+  const saved = trib.hp <= 0 ? bell('trib') : false;
+  if (saved) {
     trib.hp = trib.max * .35;
-    txt = `第${cn(trib.k)}道天雷落下，混沌钟当空罩住了你，替你扛下这一击，随即寸寸碎裂！`;
+    txt = saved === 'bell' ? `第${cn(trib.k)}道天雷落下，混沌钟当空罩住了你，替你扛下这一击，随即寸寸碎裂！`
+      : `第${cn(trib.k)}道天雷落下，九转还魂丹在丹田化开，你硬生生扛住了这一击！`;
     wait = 2600;
   } else if (trib.hp <= 0 && p && !S.sacrificed) {
     p.alive = false; S.sacrificed = true; S.sacName = p.name;
@@ -1859,7 +1905,7 @@ function endTrib(ok) {
   $('#trib').hidden = true; trib = null;
   if (!ok) return endGame('trib', { k: cn(k) });
   if (!fin) {
-    S.lv++; S.xp = 0; S.yanshou = 0; addMo(8);
+    S.lv++; S.xp = 0; S.yanshou = 0; S.wudao = 0; addMo(8);
     partners().forEach(c => { c.lv = Math.max(c.lv, S.lv - 1); });
     log(`九道天雷尽数扛下，仙光自九天垂落。你破碎虚空，${partners().length ? '与' + pNames() + '一同' : ''}飞升仙界，成就${LEVELS[S.lv].name}！寿元增至 ${fmt(maxLifeY())} 年。`, 'gold');
     ripple(3, 'gold');
@@ -2074,6 +2120,10 @@ function renderStatus() {
   if (S.bpill) chips.push(`<span class="chip gold">${REALMS[Math.min(L.r + 1, REALMS.length - 1)].pill}</span>`);
   if (S.duepill) chips.push(`<span class="chip gold">渡厄丹 ×${S.duepill}</span>`);
   if (S.zhanyi) chips.push('<span class="chip gold">战意丹</span>');
+  if (S.peiT > 0) chips.push(`<span class="chip jade">培元 ${Math.ceil(S.peiT)} 月</span>`);
+  if (S.jinT > 0) chips.push(`<span class="chip gold">金刚 ${Math.ceil(S.jinT)} 月</span>`);
+  if (S.xunbao > 0) chips.push(`<span class="chip gold">寻宝 ×${S.xunbao}</span>`);
+  if (S.huanhun) chips.push('<span class="chip gold">九转还魂丹</span>');
   if (!chips.length) chips.push('<span class="small">气息平稳</span>');
   setHtml('#s-chips', chips.join(''));
   setHtml('#s-kv', `
@@ -2094,7 +2144,7 @@ function renderStatus() {
 
   $('#c-realm').textContent = L.name;
   const eb = earlyBoost();
-  $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (eb > 1 ? ` · 初入仙途 ×${+eb.toFixed(2)}` : '') + (S.tideT > 0 ? ' · 灵潮' : '') + (p ? ' · 双修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
+  $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (eb > 1 ? ` · 初入仙途 ×${+eb.toFixed(2)}` : '') + (S.tideT > 0 ? ' · 灵潮' : '') + (S.peiT > 0 ? ' · 培元' : '') + (p ? ' · 双修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
   const full = S.xp >= q, b = $('#b-break');
   b.disabled = !full || !!S.over || !S.started;
   b.classList.toggle('ready', full);
@@ -2243,9 +2293,10 @@ function sideHome() {
 }
 
 function sidePill() {
-  return '<div class="list">' + pills().map(P => `<div class="item"><h3>${P.n}</h3>
+  /* 丹药图标：图还没到的先不显示，不留破图 */
+  return '<div class="list">' + pills().map(P => `<div class="item"><h3><img class="fb-ic" src="img/dan/${P.id}.jpg" alt="" onerror="this.remove()">${P.n}</h3>
     <div class="act"><button class="btn sm" data-act="brew" data-id="${P.id}" type="button" ${!P.ok || S.herbs < P.h || S.stones < P.s ? 'disabled' : ''}>${P.ok ? '炼制' : P.why}</button>${costTag(P.s, P.h)}</div>
-    <div class="meta">${P.id === 'po' || P.id === 'due' ? '冲关之物' : P.id === 'zhan' ? '登塔之物' : '炼成即服'}</div><p>${P.d}</p>${fbHtml('brew:' + P.id)}</div>`).join('') + '</div>';
+    <div class="meta">${P.id === 'po' || P.id === 'due' ? '冲关之物' : P.id === 'zhan' ? '登塔之物' : P.id === 'hun' ? '保命之物' : '炼成即服'}</div><p>${P.d}</p>${fbHtml('brew:' + P.id)}</div>`).join('') + '</div>';
 }
 
 function sideTower() {

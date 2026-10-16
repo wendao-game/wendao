@@ -221,6 +221,20 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .log li.bad span{color:var(--cinnabar)}
 .log li.rose span{color:var(--rose)}
 
+/* 启动页：健康游戏忠告 + 适龄提示 */
+.splash{position:fixed;inset:0;z-index:50;background:var(--ink);display:grid;place-items:center;padding:24px 16px;cursor:pointer;
+  transition:opacity .5s}
+.splash.out{opacity:0;pointer-events:none}
+.splash-in{display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center;max-width:420px}
+.splash-t{font-family:var(--f-display);font-size:44px;color:var(--gold);letter-spacing:.2em;line-height:1.2}
+.splash-warn{color:var(--fg);font-size:14px;line-height:2;letter-spacing:.06em}
+.splash-warn b{display:block;color:var(--gold);font-weight:normal;font-size:15px;margin-bottom:4px}
+.splash-tip{color:var(--muted);font-size:12px}
+.age{display:inline-grid;place-items:center;min-width:44px;height:52px;padding:0 6px;border:2px solid var(--jade);border-radius:6px;
+  color:var(--jade);font:bold 20px/1 sans-serif;gap:2px}
+.age small{font-size:10px;font-weight:normal}
+.age-sm{min-width:0;height:auto;padding:1px 6px;border-width:1px;font-size:12px;border-radius:4px;vertical-align:middle}
+.health-foot{max-width:1280px;margin:0 auto;padding:0 16px 28px;color:var(--muted);font-size:12px;line-height:1.9;text-align:center}
 .modal{position:fixed;inset:0;background:var(--shade);display:grid;place-items:center;z-index:20;padding:16px;overflow-y:auto}
 .card{width:100%;max-width:460px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:14px}
 .card h2{font-family:var(--f-display);font-weight:400;font-size:40px;margin:0;color:var(--gold);line-height:1.1}
@@ -430,6 +444,19 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
   </section>
 </div>
 
+<footer class="health-foot"><span class="age age-sm">12+</span>　本游戏适合 12 周岁以上用户<br>
+  抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。<br>适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。</footer>
+
+<div class="splash" id="splash" role="dialog" aria-label="健康游戏忠告">
+  <div class="splash-in">
+    <div class="splash-t">问道长生</div>
+    <div class="age">12+<small>适龄提示</small></div>
+    <div class="splash-warn"><b>健康游戏忠告</b>
+      抵制不良游戏，拒绝盗版游戏。<br>注意自我保护，谨防受骗上当。<br>适度游戏益脑，沉迷游戏伤身。<br>合理安排时间，享受健康生活。</div>
+    <div class="splash-tip">本游戏适合 12 周岁以上用户 · 轻触继续</div>
+  </div>
+</div>
+
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <div class="modal" id="modal" hidden><div class="card" id="card"></div></div>
@@ -534,7 +561,7 @@ const LOCS = [
   { n: '天河古战场', rec: 46, t: 7, k: 2.6, b: 12 * Math.pow(2.4, 11), d: '上古仙魔大战之地，残兵断戟间怨魂游荡。', mons: ['仙魔残魂', '天河水怪', '堕仙魔将'] },
   { n: '混沌海',     rec: 54, t: 8, k: 2.8, b: 12 * Math.pow(2.4, 13), d: '诸天之外的混沌之海，孕育着先天神魔。', mons: ['混沌神魔', '先天凶兽', '鸿蒙古兽'] },
 ];
-const GONGFA = ['粗浅吐纳术', '长春功', '青元诀', '太乙玄功', '大衍诀', '紫府天书', '混元道经', '太上感应篇', '鸿蒙紫气诀', '太清玄元经', '大罗洞观真经', '混元道果'];
+const GONGFA = ['粗浅吐纳术', '长春功', '青元诀', '太乙玄功', '大衍诀', '紫府天书', '混元道经', '太虚感应诀', '鸿蒙紫气诀', '太清玄元经', '大罗洞观真经', '混元道果'];
 const FABAO = ['赤手空拳', '桃木剑', '青锋剑', '玄铁重剑', '紫电锤', '冰魄神光', '青竹蜂云剑', '玄天斩灵剑', '番天印', '混沌钟', '诛仙剑阵', '太极图', '盘古幡'];
 const SURN = ['林', '韩', '萧', '叶', '沈', '陆', '顾', '白', '秦', '苏', '柳', '云', '楚', '江', '厉', '慕容', '上官'];
 const GIVEN = ['青玄', '长歌', '无尘', '清和', '若虚', '知秋', '守拙', '听澜', '飞羽', '砚舟', '明月', '不语'];
@@ -647,7 +674,7 @@ const root = () => ROOTS.find(r => r.id === S.root) || ROOTS[4];
 const req = lv => Math.round(40 * Math.pow(1.45, lv) * Math.pow(1.1, Math.max(0, lv - 12)));
 const maxLifeY = () => Math.round(REALMS[realm()].life * (S.path === 'ti' ? 1.2 : 1) * (1 + gear('shou') / 100) * (1 + .1 * dg('changsheng'))) + S.lifeY;
 const ageY = () => Math.floor(S.ageM / 12);
-/* 道侣：可有多位。元婴可结两位，合体可结三位 */
+/* 知己可有多位（元婴两位、合体三位），道侣只能结一位 */
 const alive = () => S.comps.filter(c => c.alive);
 const partners = () => S.comps.filter(c => c.alive && c.partner);
 const partner = () => partners()[0] || null;
@@ -812,7 +839,7 @@ const MIBAO = [
   { id: 'nianzhu',  n: '白骨念珠', d: '心魔越重战力越高，最多 +40%',              hint: '心魔深重之人，与白骨相对。' },
   { id: 'huhuo',    n: '狐火灯',   d: '知己道侣的情谊不再衰减',                  hint: '狐与狐，总能认出彼此。' },
   { id: 'yaya',     n: '饕餮之牙', d: '分解灵宝所得灵石翻倍',                    hint: '贪得无厌者，才拔得下凶兽的牙。' },
-  { id: 'tongqian', n: '子夜铜钱', d: '每月有几率捡到一笔灵石',                  hint: '子时的钱，会自己滚到你脚边。' },
+  { id: 'tongqian', n: '子夜铜钱', d: '每月有几率捡到一笔灵石',                  hint: '灵潮翻涌时，连铜钱都会自己滚到你脚边。' },
   { id: 'suihui',   n: '连珠剑穗', d: '每连胜一场战力 +3%，最多 +30%，落败清零', hint: '十战十胜，剑穗自结。' },
   { id: 'leijie',   n: '雷劫残片', d: '渡劫天雷伤害 −20%',                      hint: '生而带雷者，登塔三十层。' },
   { id: 'neidan',   n: '异兽内丹', d: '遇到异兽的几率翻倍',                      hint: '异兽体内，偶有奇珍。' },
@@ -834,7 +861,7 @@ function fightEnd(win, c) {
   S.streak = win ? (S.streak || 0) + 1 : 0;
   S.burnFight = false;
   if (!win) return;
-  const q = S.qyc || {}, hr = new Date().getHours();
+  const q = S.qyc || {};
   const tryMb = (id, p, ok) => { if (ok && !mb(id) && Math.random() < p * (1 + .5 * dg('tianyan'))) gainMibao(id); };
   tryMb('zhulou', .15, c.loc === 0 && q.yaonong === 0);
   tryMb('lujiao', .15, c.loc === 2 && q.linglu === 0);
@@ -843,7 +870,7 @@ function fightEnd(win, c) {
   tryMb('nianzhu', 1, c.mon === '白骨夫人' && S.mo >= 50);
   tryMb('huhuo', 1, c.mon === '九尾天狐' && partners().some(p => p.orig === '化形的灵狐'));
   tryMb('yaya', 1, c.mon === '饕餮' && S.bag.length >= BAG_CAP);
-  tryMb('tongqian', .1, hr === 23 || hr === 0);
+  tryMb('tongqian', .1, S.tideT > 0);
   tryMb('suihui', 1, S.streak >= 10);
   tryMb('leijie', 1, S.root === 'lei' && (c.tower || 0) >= 30);
   tryMb('neidan', .15, !!c.yi);
@@ -864,7 +891,7 @@ const MB_HOW = {
   nianzhu: '心魔 50 以上时，击败镇妖塔第 20 层的白骨夫人',
   huhuo: '道侣中有化形的灵狐时，击败镇妖塔第 70 层的九尾天狐',
   yaya: '储物袋装满时，击败镇妖塔第 80 层的饕餮',
-  tongqian: '在现实时间 23 点到凌晨 1 点之间斗法获胜（10%）',
+  tongqian: '天地灵气潮汐期间斗法获胜（10%）',
   suihui: '连续赢下 10 场斗法',
   leijie: '身具雷灵根，在镇妖塔第 30 层及以上获胜',
   neidan: '击败异兽（15%）',
@@ -1137,7 +1164,7 @@ function worldEvent() {
     else { S.xp *= .9; addMo(15); log('心魔侵扰，气血翻涌，修为折损一成，心魔又深了几分。', 'bad'); }
   }
   else if (roll < .8) { const s = Math.round(stipend() * 30 + 5); S.stones += s; log(`${sc.left ? (sc.f ? '仙界道友' : '旧日故交') : F().elder}送来灵石 ${fmt(s)}。`, 'good'); }
-  else if (roll < .9 && p) { const x = rate(true) * 20; gainXp(x); addMo(-6); log(`与${p.name}月下双修，心神安宁，修为精进 ${fmt(x)}。`, 'rose'); }
+  else if (roll < .9 && p) { const x = rate(true) * 20; gainXp(x); addMo(-6); log(`与${p.name}月下同修论道，心神安宁，修为精进 ${fmt(x)}。`, 'rose'); }
   else { const h = 1 + realm(); S.herbs += h; log(`洞府外灵田成熟，收得灵草 ${h} 株。`, 'good'); }
 }
 
@@ -1176,7 +1203,7 @@ function breakthrough() {
     if (major) {
       S.yanshou = 0; S.wudao = 0; addMo(8);
       log(`${usedPill ? '服下' + REALMS[realm()].pill + '，' : ''}${pa ? pNames() + '在旁护法，' : ''}天地灵气倒灌，成功踏入${LEVELS[S.lv].name}！寿元增至 ${maxLifeY()} 年。境界愈高，心魔愈重。`, 'gold');
-      if (compCap() > cap0) log(`道心愈阔，此后可与 ${compCap()} 位知己道侣同行。`, 'rose');
+      if (compCap() > cap0) log(`道心愈阔，此后可结交 ${compCap()} 位知己同行。`, 'rose');
       ripple(3, 'gold');
       burst(LEVELS[S.lv].name, `寿元 ${fmt(maxLifeY())} 年 · 战力 ${fmt(pwr())}`);
     } else {
@@ -1364,7 +1391,7 @@ function maybeMeet(place, p) {
   do { name = pick(SURN) + pick(C_GIVEN); } while (taken.includes(name) || name === S.name);
   const c = {
     name, orig: pick(C_ORIG), trait: pick(C_TRAIT),
-    sex: Math.random() < .8 ? (S.sex === 'f' ? 'm' : 'f') : S.sex,
+    sex: S.sex === 'f' ? 'm' : 'f',
     lv: clamp(S.lv + ri(-2, 3), 0, TOP - 1), fav: 10, partner: false,
     secret: Math.random() < .3, revealed: false, alive: true, sinceM: 0, decayM: 0,
   };
@@ -1390,7 +1417,8 @@ function compAct(a, ci) {
     const f = ri(8, 14), h = ri(1, 3) * (1 + realm()); c.fav = Math.min(100, c.fav + f); S.herbs += h;
     log(`与${c.name}结伴同游${pick(['东海', '云梦泽', '凡间古都', '雪山之巅'])}半载，沿途采得灵草 ${h} 株。情谊 +${f}。`, 'rose');
   } else if (a === 'wed') {
-    if (c.partner || c.fav < 100 || S.lv < 9) return;
+    /* 道侣只能结一位，知己可以有多位 */
+    if (c.partner || c.fav < 100 || S.lv < 9 || partners().length) return;
     c.partner = true; c.sinceM = 0; c.lv = Math.max(c.lv, S.lv - 1);
     log(`你与${c.name}于${S.sect.left ? (S.sect.f ? '云海之上' : '荒山') : F().wed}焚香立誓，结为道侣。自此同修共进，生死相随。`, 'gold');
   } else if (a === 'hermit') {
@@ -1601,14 +1629,12 @@ const EVENTS = {
       body: `<div class="meet-pt">${compBust(ev.c, 'meet')}</div>
         <p>${esc(MEETS[ev.s || 0](ev.c, ev.place))}</p>
         <p class="m">${esc(ev.c.name)}，${ev.c.orig}，${ev.c.trait}，修为${LEVELS[ev.c.lv].name}。</p>`,
-      opts: [['结为知己', '日后可赠礼、论道、同游，情谊深厚后可结为道侣'
-        + (partners().length ? `。${pNames()}知道后难免吃味，情谊 −8` : '')], ['拱手作别', '萍水相逢，各奔前程']] }),
+      opts: [['结为知己', partners().length ? '日后可赠礼、论道、同游，做一位相知相伴的好友' : '日后可赠礼、论道、同游，情谊深厚后可结为道侣'],
+        ['拱手作别', '萍水相逢，各奔前程']] }),
     pick(ev, i) {
       if (i === 0) {
-        const ps = partners();
         S.comps.push(ev.c);
         log(`结识${ev.c.name}（${ev.c.orig}），引为知己。`, 'rose');
-        if (ps.length) { ps.forEach(p => { p.fav = Math.max(0, p.fav - 8); }); log(`${ps.map(p => p.name).join('、')}听说此事，几日没给你好脸色。`, 'rose'); }
       }
       else log(`与${ev.c.name}拱手作别，各奔前程。`);
     },
@@ -2445,7 +2471,7 @@ function renderStatus() {
   if (S.dao) chips.push('<span class="chip gold">已证道</span>');
   if (S.injT > 0) chips.push(`<span class="chip red">负伤 ${Math.ceil(S.injT)} 月</span>`);
   if (S.tideT > 0) chips.push(`<span class="chip jade">灵潮 ${Math.ceil(S.tideT)} 月</span>`);
-  if (p) chips.push(`<span class="chip rose">双修${partners().length > 1 ? ' ×' + partners().length : ''}</span>`);
+  if (p) chips.push(`<span class="chip rose">同修${partners().length > 1 ? ' ×' + partners().length : ''}</span>`);
   if (S.bpill) chips.push(`<span class="chip gold">${REALMS[Math.min(L.r + 1, REALMS.length - 1)].pill}</span>`);
   if (S.duepill) chips.push(`<span class="chip gold">渡厄丹 ×${S.duepill}</span>`);
   if (S.zhanyi) chips.push('<span class="chip gold">战意丹</span>');
@@ -2476,7 +2502,7 @@ function renderStatus() {
 
   $('#c-realm').textContent = L.name;
   const eb = earlyBoost();
-  $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (eb > 1 ? ` · 初入仙途 ×${+eb.toFixed(2)}` : '') + (S.tideT > 0 ? ' · 灵潮' : '') + (S.peiT > 0 ? ' · 培元' : '') + (p ? ' · 双修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
+  $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (eb > 1 ? ` · 初入仙途 ×${+eb.toFixed(2)}` : '') + (S.tideT > 0 ? ' · 灵潮' : '') + (S.peiT > 0 ? ' · 培元' : '') + (p ? ' · 同修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
   const full = S.xp >= q, b = $('#b-break');
   b.disabled = !full || !!S.over || !S.started;
   b.classList.toggle('ready', full);
@@ -2559,17 +2585,17 @@ function sideComp() {
   const cap = compCap(), al = alive(), ps = partners();
   const k = ps.length;
   const head = `<div class="sum">
-    <div class="top"><span class="small">同行 ${al.length} / ${cap} 人${cap < 3 ? `（${cap < 2 ? '元婴' : '合体'}后可多一位）` : ''}</span>${k ? `<span class="chip rose">双修 ×${pBoost().toFixed(2)}</span>` : ''}</div>
+    <div class="top"><span class="small">同行 ${al.length} / ${cap} 人${cap < 3 ? `（${cap < 2 ? '元婴' : '合体'}后可多一位）` : ''}</span>${k ? `<span class="chip rose">同修 ×${pBoost().toFixed(2)}</span>` : ''}</div>
     <p class="note">${!S.comps.length ? (S.lv < 2 ? '修为尚浅，一心向道。炼气三层之后，历练与宗门任务途中或有邂逅。' : '尚无知己。历练与宗门任务途中或有邂逅。')
       : al.length < cap && S.lv >= 2 ? '尚有余位，历练与宗门任务途中或有新的邂逅。' : '情谊满一百且已筑基，便可结为道侣。久不往来，情谊会慢慢变淡。'}</p>
-    <p class="note">每位道侣：修炼更快（一位 ×1.3，之后每位再 +0.15），冲关有人护法，渡劫护体 +30。情谊不低于 90 的道侣可携手飞升。另结新欢，旧人会吃味。</p>
+    <p class="note">结为道侣后：同修令修炼速度 ×1.3，冲关有人护法，渡劫护体 +30；情谊不低于 90 可携手飞升。道侣只能结一位，知己可以有多位。</p>
     <p class="note mc-hint">赠礼 情谊 +6~12 · 论道 情谊 +3~6、心魔 −10 · 同游 情谊 +8~14、得灵草</p></div>`;
   const gc = giftCost();
   const cards = S.comps.map((c, ci) => {
     const key = 'comp:' + ci + ':';
     if (!c.alive) return `<div class="mc dead"><div class="mc-top"><div class="pt">${compBust(c, 'cd' + ci)}</div>
       <div class="mc-info"><span class="mc-name">${esc(c.name)}</span><p class="note">故人已逝。${S.sacName === c.name ? '那一道天雷，本该落在你身上。' : '后山的风，此后都有些冷。'}</p></div></div></div>`;
-    const canWed = !c.partner && c.fav >= 100 && S.lv >= 9;
+    const hasP = partners().length > 0, canWed = !c.partner && c.fav >= 100 && S.lv >= 9 && !hasP;
     const armed = Date.now() - hermitArm < 3000 && hermitCi === ci;
     const okH = c.fav >= 100 && realm() >= 2;
     return `<div class="mc"><div class="mc-top"><div class="pt">${compBust(c, 'cc' + ci)}</div>
@@ -2582,7 +2608,7 @@ function sideComp() {
         <button class="btn sm rose" data-act="comp" data-k="travel" data-ci="${ci}" type="button">同游<small>半年</small></button>
         ${c.partner
           ? `<button class="btn sm ${armed ? 'red' : 'rose'}" data-act="comp" data-k="hermit" data-ci="${ci}" type="button" ${okH ? '' : 'disabled'}>${armed ? '再点一次：归隐，此世终结' : '携手归隐'}${okH ? '' : '<small>金丹·情谊满</small>'}</button>`
-          : `<button class="btn sm gold ${canWed ? 'ready' : ''}" data-act="comp" data-k="wed" data-ci="${ci}" type="button" ${canWed ? '' : 'disabled'}>结为道侣${canWed ? '' : `<small>${c.fav < 100 ? '情谊满百' : '需筑基'}</small>`}</button>`}
+          : `<button class="btn sm gold ${canWed ? 'ready' : ''}" data-act="comp" data-k="wed" data-ci="${ci}" type="button" ${canWed ? '' : 'disabled'}>结为道侣${canWed ? '' : `<small>${hasP ? '已有道侣' : c.fav < 100 ? '情谊满百' : '需筑基'}</small>`}</button>`}
       </div>
       ${['gift', 'talk', 'travel', 'wed', 'hermit'].map(a => fbHtml(key + a)).join('')}</div>`;
   });
@@ -3185,6 +3211,11 @@ document.addEventListener('input', e => {
   if (e.target.id === 'dao-name') S.name = e.target.value.trim().slice(0, 6) || S.name;
 });
 document.addEventListener('change', e => { if (e.target.id === 'use-legacy') S.useLegacy = e.target.checked; });
+/* 启动页停留 3 秒或轻触后淡出 */
+const splash = $('#splash');
+const hideSplash = () => { if (splash.hidden) return; splash.classList.add('out'); setTimeout(() => { splash.hidden = true; }, 500); };
+splash.addEventListener('click', hideSplash);
+setTimeout(hideSplash, 3000);
 $('#b-med').addEventListener('click', () => { if (busy()) return; ui = 'burn'; showModal(); });
 $('#b-sex').addEventListener('click', () => { S.sex = S.sex === 'f' ? 'm' : 'f'; save(); renderStatus(); if (!S.started) showModal(); });
 $('#b-break').addEventListener('click',() => { act('', breakthrough); if (S.pending) showModal(); renderStatus(); renderSide(); renderLog(); });

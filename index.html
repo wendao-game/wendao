@@ -5,6 +5,8 @@
   --ink:#0e1320; --panel:#151c2b; --panel-2:#1c2538; --line:#2a3550;
   --fg:#e8e2d0; --muted:#8e97ac; --jade:#78d0b4; --gold:#dcb466; --cinnabar:#d9573f;
   --rose:#e39bb0; --seal-fg:#f7efdd; --bolt:#d8e7ff; --shade:rgba(6,9,16,.8);
+  /* 灵宝品质：凡 灵 宝 仙 神 */
+  --q0:#b4bccb; --q1:#6fcf8e; --q2:#5aa7e8; --q3:#b98af0; --q4:#f0a64a;
   --f-display:"Ma Shan Zheng","STXingkai","KaiTi","STKaiti",serif;
   --f-body:"Noto Serif SC","Songti SC","SimSun","Source Han Serif SC",serif;
   color-scheme:dark;
@@ -258,10 +260,75 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 .flash{animation:flash .5s ease-out}
 @keyframes flash{0%{background:var(--bolt)}100%{background:var(--ink)}}
 
+/* 突破、出宝的全屏特效 */
+.burst{position:fixed;inset:0;z-index:40;display:grid;place-items:center;pointer-events:none;
+  background:radial-gradient(circle at 50% 45%,var(--burst-c,rgba(220,180,102,.5)),transparent 62%);animation:burstbg 2.2s ease-out forwards}
+.burst-in{text-align:center;padding:0 16px;animation:burstin 2.2s cubic-bezier(.2,1.4,.4,1) forwards}
+.burst-t{font-family:var(--f-display);font-size:clamp(48px,12vw,104px);color:var(--burst-tc,var(--gold));line-height:1.1;letter-spacing:.08em;
+  text-shadow:0 0 28px currentColor,0 4px 0 rgba(0,0,0,.45)}
+.burst-s{margin-top:10px;font-size:16px;color:var(--fg);letter-spacing:.2em;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+.burst.mini,.burst.mini .burst-in{animation-duration:1.3s}
+.burst.mini{--burst-c:rgba(120,208,180,.28)}
+.burst.mini .burst-t{font-size:clamp(30px,7vw,56px);--burst-tc:var(--jade);color:var(--jade)}
+.burst.q3{--burst-c:rgba(185,138,240,.5);--burst-tc:var(--q3)}
+.burst.q4{--burst-c:rgba(240,166,74,.55);--burst-tc:var(--q4)}
+/* 起始帧就是可见的：动画万一不播放，特效照样看得见，到时由脚本收起 */
+@keyframes burstbg{0%{opacity:1}70%{opacity:.85}100%{opacity:0}}
+@keyframes burstin{0%{transform:scale(1.8)}18%{transform:scale(.95)}26%{transform:none}80%{opacity:1}100%{transform:scale(1.04);opacity:0}}
+.app.shake{animation:shake .45s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-6px,2px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-4px,3px)}80%{transform:translate(3px,-2px)}}
+
+/* 斗法演出 */
+.bt{position:fixed;inset:0;z-index:35;background:var(--shade);display:grid;place-items:center;padding:16px}
+.bt-card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.bt-card.shake{animation:shake .35s}
+.bt-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);letter-spacing:.1em}
+.bt-side{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;align-items:center}
+.bt-side.foe{grid-template-columns:minmax(0,1fr) 92px}
+.bt-side.foe .bt-info{text-align:right;align-items:flex-end}
+.bt-pt{position:relative;width:92px;height:92px;border-radius:10px;background:radial-gradient(circle at 50% 40%,var(--line),var(--panel-2) 75%);border:1px solid var(--line)}
+.bt-pt>*{border-radius:10px;overflow:hidden;width:100%;height:100%}
+.bt-pt>img{display:block;max-width:none;object-fit:cover}
+.bt-pt.boss{border-color:var(--cinnabar);box-shadow:0 0 18px rgba(217,87,63,.45)}
+.bt-pt.hit{animation:hit .25s}
+@keyframes hit{0%,100%{filter:none}50%{filter:brightness(2.2) saturate(.3)}}
+.bt-info{display:flex;flex-direction:column;gap:4px;min-width:0;width:100%}
+.bt-info b{font-family:var(--f-display);font-weight:400;font-size:24px;line-height:1.1}
+.bt-info .p{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bt .bar{height:10px;width:100%}
+/* 血条不用过渡动画：有的浏览器环境里过渡会卡住不动，挨打就直接掉 */
+.bt .bar i{transition:none}
+.bt-side.foe .bar i{background:var(--cinnabar);margin-left:auto}
+.bt-hpt{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bt-mid{min-height:52px;display:grid;place-items:center;font-family:var(--f-display);font-size:26px;color:var(--gold);text-align:center;line-height:1.2}
+.bt-mid.win{font-size:44px}
+.bt-mid.lose{font-size:44px;color:var(--cinnabar)}
+.bt-mid .say{display:inline-flex;align-items:center;gap:8px;animation:say .45s ease-out}
+.bt-mid .say img{width:36px;height:36px;border-radius:6px}
+/* 起始帧不设透明：动画万一不播放，字也照样看得见 */
+@keyframes say{from{transform:scale(1.6)}to{transform:none}}
+.dmg{position:absolute;top:28%;transform:translateX(-50%);font-weight:700;font-size:20px;color:var(--fg);text-shadow:0 2px 4px rgba(0,0,0,.8);
+  pointer-events:none;white-space:nowrap;animation:dmg .9s ease-out forwards;font-variant-numeric:tabular-nums;z-index:2;overflow:visible!important;width:auto!important;height:auto!important}
+.dmg.crit{font-size:30px;color:var(--gold)}
+.dmg.heal{color:var(--jade)}
+@keyframes dmg{0%{transform:translate(-50%,6px) scale(.8)}15%{transform:translate(-50%,-6px) scale(1.15)}100%{transform:translate(-50%,-46px);opacity:0}}
+.mon-ph{display:grid;place-items:center;font-family:var(--f-display);font-size:48px;color:var(--cinnabar);background:radial-gradient(circle,rgba(217,87,63,.22),transparent 70%)}
+.mon-ph.boss{color:var(--gold)}
+.bt-foot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
+
+/* 灵宝 */
+.gear{border-left:3px solid var(--qc,var(--line))}
+.gear.q0{--qc:var(--q0)} .gear.q1{--qc:var(--q1)} .gear.q2{--qc:var(--q2)} .gear.q3{--qc:var(--q3)} .gear.q4{--qc:var(--q4)}
+.gear h3 .qn{font-size:12px;font-weight:600;color:var(--qc);border:1px solid var(--qc);border-radius:99px;padding:0 7px}
+.gear.empty{border-left-style:dashed}
+.gear .act .btn.sm{flex-direction:column;gap:0}
+.qt0{color:var(--q0)} .qt1{color:var(--q1)} .qt2{color:var(--q2)} .qt3{color:var(--q3)} .qt4{color:var(--q4)}
+
 @media (max-width:420px){.elist{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){
   .float{animation-duration:.01s}
-  .fb.new,.toast,.res .pw b.bump,.fig .me,.fig .mate,.zl-under{animation:none}
+  .fb.new,.toast,.res .pw b.bump,.fig .me,.fig .mate,.zl-under,.app.shake,.bt-card.shake,.bt-pt.hit{animation:none}
+  .burst,.burst-in,.dmg{animation-duration:.01s}
   .flash{animation:none}
   .bar i{transition:none}
 }
@@ -336,6 +403,7 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
       <button role="tab" data-tab="comp" type="button">道侣</button>
       <button role="tab" data-tab="home" type="button">洞府</button>
       <button role="tab" data-tab="pill" type="button">丹房</button>
+      <button role="tab" data-tab="gear" type="button">灵宝</button>
     </div>
     <div id="side-body"></div>
   </section>
@@ -349,6 +417,24 @@ header{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-end;justify-c
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <div class="modal" id="modal" hidden><div class="card" id="card"></div></div>
+
+<div class="burst" id="burst" hidden><div class="burst-in"><div class="burst-t" id="burst-t"></div><div class="burst-s" id="burst-s"></div></div></div>
+
+<div class="bt" id="bt" hidden>
+  <div class="bt-card" id="bt-card">
+    <div class="bt-head"><span id="bt-where"></span><button class="btn sm" id="bt-skip" type="button">跳过</button></div>
+    <div class="bt-side foe">
+      <div class="bt-info"><b id="bt-foe-n"></b><span class="p" id="bt-foe-p"></span><div class="bar"><i id="bt-foe-hp"></i></div><span class="bt-hpt" id="bt-foe-hpt"></span></div>
+      <div class="bt-pt" id="bt-foe-pt"></div>
+    </div>
+    <div class="bt-mid" id="bt-mid"></div>
+    <div class="bt-side me">
+      <div class="bt-pt" id="bt-me-pt"></div>
+      <div class="bt-info"><b id="bt-me-n"></b><span class="p" id="bt-me-p"></span><div class="bar"><i id="bt-me-hp"></i></div><span class="bt-hpt" id="bt-me-hpt"></span></div>
+    </div>
+    <label class="bt-foot" for="bt-auto"><input type="checkbox" id="bt-auto"> 以后自动跳过斗法演出（可在历练页重新开启）</label>
+  </div>
+</div>
 
 <div class="trib" id="trib" hidden>
   <canvas id="tcv"></canvas>
@@ -527,6 +613,7 @@ function fresh(prev) {
     comps: [], pending: null, sex: prev ? prev.sex : 'm', sacName: '',
     tower: 0, zhanyi: 0, t: Date.now(),
     qy: {}, qyTry: {}, flags: {}, path: '', dao: false,
+    bag: [], eq: [null, null, null],
   };
 }
 let S = fresh(null);
@@ -538,7 +625,7 @@ try { endings = JSON.parse(localStorage.getItem(END_KEY) || '[]'); } catch (e) {
 const realm = () => LEVELS[S.lv].r;
 const root = () => ROOTS.find(r => r.id === S.root) || ROOTS[4];
 const req = lv => Math.round(40 * Math.pow(1.45, lv));
-const maxLifeY = () => Math.round(REALMS[realm()].life * (S.path === 'ti' ? 1.2 : 1)) + S.lifeY;
+const maxLifeY = () => Math.round(REALMS[realm()].life * (S.path === 'ti' ? 1.2 : 1) * (1 + gear('shou') / 100)) + S.lifeY;
 const ageY = () => Math.floor(S.ageM / 12);
 /* 道侣：可有多位。元婴可结两位，合体可结三位 */
 const alive = () => S.comps.filter(c => c.alive);
@@ -548,8 +635,11 @@ const pNames = () => partners().map(c => c.name).join('、');
 const compCap = () => realm() >= 6 ? 3 : realm() >= 3 ? 2 : 1;
 const pBoost = () => { const k = partners().length; return k ? 1.15 + .15 * k : 1; };
 const stipend = () => .12 * Math.pow(2.1, realm()) * (S.sect.left ? .3 : 1 + .5 * S.sect.rank);
+/* 初入仙途：前期修炼加速，炼气一层 ×5，逐层递减，到第 17 个小境界恢复正常 */
+const earlyBoost = () => Math.max(1, 5 - .25 * S.lv);
 function rate(noBuff) {
-  let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * pBoost() * (S.sect.free ? 1.2 : 1);
+  let r = Math.pow(1.4, S.lv) * root().mul * (1 + .3 * S.gongfa) * (1 + .25 * S.array) * (1 + .25 * S.reinc) * pBoost() * (S.sect.free ? 1.2 : 1)
+    * earlyBoost() * (1 + gear('xiu') / 100);
   if (!noBuff) r *= (S.injT > 0 ? .5 : 1) * (S.tideT > 0 ? 2 : 1);
   return r;
 }
@@ -601,7 +691,8 @@ const costGongfa = () => Math.round(25 * Math.pow(1.85, S.gongfa));
 const costArray = () => Math.round(40 * Math.pow(1.95, S.array));
 const costFabao = () => Math.round(35 * Math.pow(2.0, S.fabao));
 const nextMajor = () => S.lv < TOP && LEVELS[S.lv + 1].r !== realm();
-const power = () => (S.lv + 1) * fabaoMul() * (1 + .1 * partners().length) * injMul() * (isPath('jian') ? 1.35 : 1) * (sk(10) ? 1.2 : 1);
+const power = () => (S.lv + 1) * fabaoMul() * (1 + .1 * partners().length) * injMul() * (isPath('jian') ? 1.35 : 1) * (sk(10) ? 1.2 : 1)
+  * (1 + gear('pow') / 100);
 const odds = (P, E) => clamp(P * P / (P * P + E * E), .05, .97);
 /* 战力：把内部的斗法强度 ×100 显示给玩家 */
 const pwr = () => Math.round(power() * 100);
@@ -621,14 +712,87 @@ function log(t, k = '') {
   if (S.log.length > 80) S.log.length = 80;
   logDirty = true;
 }
-function addMo(n) { S.mo = clamp(S.mo + (n > 0 && sk(5) ? n * .7 : n), 0, 100); }
+function addMo(n) {
+  if (n > 0) n *= (sk(5) ? .7 : 1) * Math.max(0, 1 + gear('mo') / 100);
+  S.mo = clamp(S.mo + n, 0, 100);
+}
+
+/* ---------- 灵宝：掉落、品质与词条 ---------- */
+/* 斗法得胜、妖王、宗门大比与奇遇都可能掉落；最多佩戴三件，储物袋十二格；转世不保留 */
+const QUAL = [
+  { n: '凡品', k: 1,   aff: 1 },
+  { n: '灵品', k: 1.6, aff: 1 },
+  { n: '宝品', k: 2.4, aff: 2 },
+  { n: '仙品', k: 3.6, aff: 3 },
+  { n: '神品', k: 5.5, aff: 4 },
+];
+const AFF = {
+  pow:  { n: '战力', v: 4 },
+  xiu:  { n: '修炼速度', v: 5 },
+  ling: { n: '灵石收益', v: 8 },
+  shou: { n: '寿元', v: 3 },
+  hu:   { n: '渡劫护体', v: 5 },
+  mo:   { n: '心魔增长', v: -6 },
+  cao:  { n: '灵草收获', v: 10 },
+};
+const AFF_KEYS = Object.keys(AFF);
+const GEAR_PRE = ['粗制', '青玉', '紫霄', '玄天', '鸿蒙'];
+const GEAR_BASE = ['玉佩', '灵戒', '护符', '发簪', '腰坠', '手串'];
+const BAG_CAP = 12;
+const gear = k => (S.eq || []).reduce((s, it) => s + (it ? (it.aff.find(a => a[0] === k) || [0, 0])[1] : 0), 0);
+const lingMul = () => 1 + gear('ling') / 100;
+const caoMul = () => 1 + gear('cao') / 100;
+const pctTxt = v => (v > 0 ? '+' : '−') + Math.abs(v) + '%';
+const affText = it => it.aff.map(([k, v]) => `${AFF[k].n} ${pctTxt(v)}`).join(' · ');
+const itemValue = it => Math.round(15 * Math.pow(2.2, realm()) * Math.pow(QUAL[it.q].k, 1.5));
+/* lvl 越高，高品质越容易出；minQ 为保底品质 */
+function rollQ(lvl, minQ = 0) {
+  const w = [60, 28, 10, 2.5, .5].map((x, q) => q < minQ ? 0 : x * Math.pow(1 + .35 * lvl, q));
+  let r = Math.random() * w.reduce((a, b) => a + b, 0), q = 0;
+  while ((r -= w[q]) > 0 && q < 4) q++;
+  return q;
+}
+function makeItem(q) {
+  const keys = AFF_KEYS.slice().sort(() => Math.random() - .5).slice(0, QUAL[q].aff);
+  return { q, name: GEAR_PRE[q] + pick(GEAR_BASE), aff: keys.map(k => [k, Math.round(AFF[k].v * QUAL[q].k * rnd(.8, 1.2))]) };
+}
+function dropItem(lvl, minQ, src) {
+  const it = makeItem(rollQ(lvl, minQ)), Q = QUAL[it.q];
+  if (S.bag.length >= BAG_CAP) {
+    const v = itemValue(it); S.stones += v;
+    log(`${src}得${Q.n}「${it.name}」，储物袋已满，随手分解得灵石 ${fmt(v)}。`);
+    return;
+  }
+  S.bag.push(it);
+  log(`${src}得${Q.n}灵宝「${it.name}」：${affText(it)}。`, it.q >= 3 ? 'gold' : 'good');
+  if (it.q >= 3) fx(() => burst(it.name, `${Q.n} · 宝光冲天`, 'q' + it.q));
+}
+function gearEquip(i) {
+  const it = S.bag[i], k = S.eq.indexOf(null);
+  if (!it || k < 0) return;
+  S.bag.splice(i, 1); S.eq[k] = it;
+  log(`佩戴${QUAL[it.q].n}「${it.name}」：${affText(it)}。`, 'good'); save();
+}
+function gearOff(k) {
+  const it = S.eq[k];
+  if (!it || S.bag.length >= BAG_CAP) return;
+  S.eq[k] = null; S.bag.push(it);
+  log(`卸下「${it.name}」。`); save();
+}
+function gearSell(i) {
+  const it = S.bag[i];
+  if (!it) return;
+  const v = itemValue(it);
+  S.bag.splice(i, 1); S.stones += v;
+  log(`分解「${it.name}」，得灵石 ${fmt(v)}。`); save();
+}
 
 /* ---------- 修炼 ---------- */
 function gainXp(n) { S.xp = Math.min(req(S.lv), S.xp + n); }
-const busy = () => !S.started || S.over || trib || S.pending || away;
+const busy = () => !S.started || S.over || trib || S.pending || away || btOn;
 
 /* 节奏：现实一秒 = 修仙 MPS 月。只挂机不点击，一世约 70~100 分钟 */
-const MPS = .3;
+const MPS = .4;
 function tick(sec) {
   if (busy()) return;
   const dt = sec * MPS;
@@ -727,9 +891,11 @@ function breakthrough() {
       log(`${usedPill ? '服下' + REALMS[realm()].pill + '，' : ''}${pa ? pNames() + '在旁护法，' : ''}天地灵气倒灌，成功踏入${LEVELS[S.lv].name}！寿元增至 ${maxLifeY()} 年。境界愈高，心魔愈重。`, 'gold');
       if (compCap() > cap0) log(`道心愈阔，此后可与 ${compCap()} 位知己道侣同行。`, 'rose');
       ripple(3, 'gold');
+      burst(LEVELS[S.lv].name, `寿元 ${fmt(maxLifeY())} 年 · 战力 ${fmt(pwr())}`);
     } else {
       log(`突破至${LEVELS[S.lv].name}。`, 'good');
       ripple(1.8, 'gold');
+      burst(LEVELS[S.lv].name, '', 'mini');
     }
     promote();
   } else if (major) {
@@ -772,14 +938,14 @@ function trip(i) {
   if (busy() || S.lv < L.rec) return;
   const m = ri(2, 4) + L.t;
   S.ageM += m; S.trips++;
-  const base = (L.b || 10 * Math.pow(3, L.t)) * (1 + .08 * Math.max(0, S.lv - L.rec));
+  const base = (L.b || 10 * Math.pow(3, L.t)) * (1 + .08 * Math.max(0, S.lv - L.rec)) * 1.5 * lingMul();
   const head = `【${L.n}】历练${cn(m)}月，`;
   const r = Math.random() * 100;
   if (r < 2) {
     S.gongfa++;
     log(head + `于一块残碑上参悟古法，功法精进至《${gongfaName(S.gongfa)}》！`, 'gold');
   } else if (r < 30) {
-    const h = Math.round(ri(1, 3) * (L.t + 1) * (isPath('dan') ? 1.5 : 1));
+    const h = Math.round(ri(1, 3) * (L.t + 1) * (isPath('dan') ? 1.5 : 1) * caoMul());
     S.herbs += h;
     log(head + pick(['于崖壁间', '在溪涧旁', '在一处妖兽巢穴外', '于古树根下']) + `采得灵草 ${h} 株。`, 'good');
   } else if (r < 48) {
@@ -787,11 +953,13 @@ function trip(i) {
     S.stones += s;
     log(head + pick(['拾得一具散修遗骸的储物袋', '寻到一条细小灵石矿脉', '替凡人村落驱邪得了谢礼']) + `，获灵石 ${fmt(s)}。`, 'good');
   } else if (r < 76) {
-    const mon = pick(L.mons);
-    if (Math.random() < winChance(L)) {
-      const s = Math.round(base * rnd(1.2, 2) * (sk(2) ? 1.3 : 1)), h = Math.round(ri(0, 2) * (L.t + 1) * (isPath('dan') ? 1.5 : 1));
+    const mon = pick(L.mons), win = Math.random() < winChance(L);
+    queueBattle({ win, P: power(), E: locFoe(L), name: mon, where: L.n });
+    if (win) {
+      const s = Math.round(base * rnd(1.2, 2) * (sk(2) ? 1.3 : 1)), h = Math.round(ri(0, 2) * (L.t + 1) * (isPath('dan') ? 1.5 : 1) * caoMul());
       S.stones += s; S.herbs += h; gainXp(req(S.lv) * .05);
       log(head + `遭遇${mon}，激战一场将其斩杀，得灵石 ${fmt(s)}${h ? '、灵草 ' + h + ' 株' : ''}。`, 'good');
+      if (Math.random() < .18) dropItem(L.t, 0, `${mon}的巢穴中，`);
     } else {
       if (defeat(L.n, mon, head)) return;
       const lost = Math.round(S.stones * .2);
@@ -830,14 +998,18 @@ function doTask(j) {
   S.ageM += T.m;
   const head = `【${sc.f ? '天庭差事' : '宗门任务'}·${T.n}】历时${cn(T.m)}月，`;
   sc.tasks[j] = genTask();
-  if (T.fight && Math.random() >= taskWin(T.fight)) {
+  const lose = T.fight && Math.random() >= taskWin(T.fight);
+  if (T.fight) queueBattle({ win: !lose, P: power(), E: taskFoe(T.fight), name: t.mon, where: T.n });
+  if (lose) {
     if (defeat(F().near, t.mon, head)) return;
     log(head + `与${t.mon}交手落败，负伤而归，任务未成。`, 'bad');
   } else {
-    sc.contrib += t.c; sc.total += t.c; S.stones += t.s; S.herbs += t.h;
+    const ts = Math.round(t.s * lingMul());
+    sc.contrib += t.c; sc.total += t.c; S.stones += ts; S.herbs += t.h;
     if (T.x) gainXp(req(S.lv) * T.x);
     if (T.mo) addMo(T.mo);
-    log(head + (T.fight ? `斩除${t.mon}，` : '') + `得贡献 ${fmt(t.c)}、灵石 ${fmt(t.s)}${t.h ? '、灵草 ' + t.h + ' 株' : ''}。`, 'good');
+    log(head + (T.fight ? `斩除${t.mon}，` : '') + `得贡献 ${fmt(t.c)}、灵石 ${fmt(ts)}${t.h ? '、灵草 ' + t.h + ' 株' : ''}。`, 'good');
+    if (T.fight && Math.random() < .08) dropItem(realm() / 2, 0, '');
     promote();
   }
   maybeMeet(F().place, .06);
@@ -1180,10 +1352,13 @@ const EVENTS = {
     pick(ev, i) {
       const hv = S.sect.f, nm = hv ? '蟠桃盛会' : '宗门大比';
       if (i === 1) { gainXp(req(S.lv) * .06); log('你在台下观战，看出了几处门道。'); return; }
-      if (Math.random() < taskWin(1.05)) {
+      const win = Math.random() < taskWin(1.05);
+      queueBattle({ win, P: power(), E: taskFoe(1.05), name: (hv ? '散仙 · ' : '同门 · ') + randName(), where: nm + ' · 决赛' });
+      if (win) {
         const g = Math.round(30 * Math.pow(1.8, realm())), s = Math.round(25 * Math.pow(2.4, realm()));
         S.sect.contrib += g; S.sect.total += g; S.stones += s; S.fabao++;
         log(`${nm}上力压群雄夺得魁首！${hv ? '天帝' : '宗主'}亲赐${fabaoName(S.fabao)}，另赏贡献 ${fmt(g)}、灵石 ${fmt(s)}。`, 'gold');
+        dropItem(realm() / 2 + 1, 2, '另得');
         promote();
       } else {
         S.injT = Math.max(S.injT, 40);
@@ -1303,7 +1478,9 @@ const QIYU = [
         if (Math.random() < .65 + .05 * S.reinc) { gainXp(req(S.lv)); S.fabao++; log(`残魂化作一道剑光没入你眉心。你得了剑仙毕生感悟，修为圆满，法宝精进为${fabaoName(S.fabao)}。`, 'gold'); }
         else { S.xp *= .7; S.injT = Math.max(S.injT, 60); addMo(30); log('残魂猛地扑进你的识海，竟想夺舍！你拼死守住灵台将它磨灭，自己也伤了根本。', 'bad'); }
       } else if (i === 1) {
-        if (Math.random() < taskWin(1.15)) { const s = Math.round(SB() * 5); S.stones += s; S.fabao++; log(`你一剑斩散残魂，从断碑下挖出一柄古剑与灵石 ${fmt(s)}。法宝精进为${fabaoName(S.fabao)}。`, 'gold'); }
+        const win = Math.random() < taskWin(1.15);
+        queueBattle({ win, P: power(), E: taskFoe(1.15), name: '剑仙残魂', boss: true, where: '葬仙古墟' });
+        if (win) { const s = Math.round(SB() * 5); S.stones += s; S.fabao++; log(`你一剑斩散残魂，从断碑下挖出一柄古剑与灵石 ${fmt(s)}。法宝精进为${fabaoName(S.fabao)}。`, 'gold'); dropItem(realm() / 2 + 1, 2, '断碑下另有'); }
         else { if (defeat('葬仙古墟', '剑仙残魂', '')) return; log('你的剑穿过了残魂，残魂的剑却没有落空。你负伤遁走。', 'bad'); }
       } else { S.lifeY += 20; addMo(-10); log('你焚香三拜。残魂沉默良久，笑道：「也罢。」消散前在你眉心一点，你的寿元多了二十年。', 'rose'); }
     } },
@@ -1333,7 +1510,9 @@ const QIYU = [
       opts: [['应战', `战魂战力约 ${fmt(shown(taskFoe(1.2)))}，胜算 ${pctOf(taskWin(1.2))}`], ['为它超度', '心魔 −20，修为小进']] }),
     pick(i) {
       if (i === 0) {
-        if (Math.random() < taskWin(1.2)) { S.fabao += 2; log(`你接下九十九戟，终于一剑破甲。战魂大笑着散去，留下那杆随它征战万年的长戟。法宝连升两阶，得${fabaoName(S.fabao)}。`, 'gold'); }
+        const win = Math.random() < taskWin(1.2);
+        queueBattle({ win, P: power(), E: taskFoe(1.2), name: '不散战魂', boss: true, where: '天河古战场' });
+        if (win) { S.fabao += 2; log(`你接下九十九戟，终于一剑破甲。战魂大笑着散去，留下那杆随它征战万年的长戟。法宝连升两阶，得${fabaoName(S.fabao)}。`, 'gold'); dropItem(realm() / 2 + 1, 2, '战魂消散处，'); }
         else { if (defeat('天河古战场', '不散战魂', '')) return; log('长戟扫来，你倒飞出去，在天河里漂了三天才爬上岸。', 'bad'); }
       } else { addMo(-20); gainXp(req(S.lv) * .3); log('你为战魂念了七日往生咒。最后一日，长戟倒下，骸骨化作了沙。', 'good'); }
     } },
@@ -1377,6 +1556,7 @@ function snap() {
   return { st: S.stones, hb: S.herbs, xp: S.xp, lv: S.lv, ct: S.sect.contrib, mo: S.mo,
     favs: alive().map(c => [c.name, c.fav]), life: maxLifeY(), age: S.ageM, pw: pwr(), inj: S.injT > 0,
     gf: S.gongfa, ar: S.array, fa: S.fabao, bp: S.bpill, dp: S.duepill, rk: S.sect.rank, root: S.root, tw: S.tower, zy: S.zhanyi,
+    bag: S.bag.length + S.eq.filter(Boolean).length,
     bpn: REALMS[Math.min(realm() + 1, REALMS.length - 1)].pill };
 }
 const sgn = (d, f = fmt) => (d > 0 ? '+' : '−') + f(Math.abs(d));
@@ -1408,6 +1588,7 @@ function deltas(a, b) {
   if (b.bp < a.bp) o.push({ t: `耗去 ${a.bpn}`, c: 't' });
   if (b.dp > a.dp) o.push({ t: `渡厄丹 ×${b.dp}`, c: 'gold' });
   if (b.tw > a.tw) o.push({ t: `镇妖塔 第${b.tw}层`, c: 'gold' });
+  if (b.bag > a.bag) o.push({ t: `灵宝 +${b.bag - a.bag}`, c: 'gold' });
   if (b.zy > a.zy) o.push({ t: '战意丹 +1', c: 'gold' });
   if (b.zy < a.zy) o.push({ t: '耗去 战意丹', c: 't' });
   if (!a.inj && b.inj) o.push({ t: '负伤', c: 'down' });
@@ -1426,6 +1607,9 @@ function act(key, fn) {
       if (key) FB = r; else toast(r);
       if (pwr() !== pw0) bumpPow();
     }
+    /* 这一步里打了一架：播放斗法演出 */
+    if (btQueue) { const b = btQueue; btQueue = null; showBattle(b); }
+    else if (afterBt.length && !btOn) { const fns = afterBt; afterBt = []; fns.forEach(f => f()); }
   }
 }
 function fbInner(r) {
@@ -1534,7 +1718,7 @@ const towerPow = () => power() * (S.zhanyi ? 1.3 : 1) * (sk(6) ? 1.15 : 1);
 /* 胜负比历练更看战力：强一成就稳一截 */
 const towerWin = f => { const a = Math.pow(towerPow(), 4), b = Math.pow(towerFoe(f), 4); return clamp(a / (a + b), .02, .98); };
 function towerLoot(f) {
-  const r = realm(), o = { s: Math.round(8 * Math.pow(2.2, r) * (1 + f / 25)), h: f % 5 ? 0 : 2 * (1 + r), big: '' };
+  const r = realm(), o = { s: Math.round(8 * Math.pow(2.2, r) * (1 + f / 25) * 1.5 * lingMul()), h: f % 5 ? 0 : Math.round(2 * (1 + r) * caoMul()), big: '' };
   if (f % 10 === 0) { o.s *= sk(7) ? 16 : 8; o.big = (f / 10) % 2 ? 'fabao' : 'gongfa'; }
   return o;
 }
@@ -1545,7 +1729,9 @@ function climb() {
   const f = S.tower + 1, mon = towerMon(f), w = towerWin(f), zy = S.zhanyi;
   S.ageM += 1; S.zhanyi = 0;
   const head = `【镇妖塔·第${f}层】${zy ? '服下战意丹，' : ''}`;
-  if (Math.random() < w) {
+  const win = Math.random() < w, boss = f % 10 === 0;
+  queueBattle({ win, P: towerPow(), E: towerFoe(f), name: mon, boss, where: `镇妖塔 · 第 ${f} 层`, fast: !boss });
+  if (win) {
     const L = towerLoot(f);
     S.tower = f; S.stones += L.s; S.herbs += L.h;
     let extra = '';
@@ -1554,6 +1740,8 @@ function climb() {
     const rec = f > towerBest;
     if (rec) { towerBest = f; try { localStorage.setItem(TOWER_KEY, String(f)); } catch (e) {} }
     log(head + `斩${mon}，得灵石 ${fmt(L.s)}${L.h ? '、灵草 ' + L.h + ' 株' : ''}${extra}。${rec && f > 1 ? '已破历代最高！' : ''}`, L.big ? 'gold' : 'good');
+    if (boss) dropItem(f / 10 + 1, 1, `${mon}的遗宝中，`);
+    else if (Math.random() < .05) dropItem(Math.floor(f / 10), 0, '塔中拾得，');
   } else {
     S.injT = Math.max(S.injT, 24);
     log(head + `不敌${mon}，被塔灵送出塔外，负伤二十四月。`, 'bad');
@@ -1675,6 +1863,7 @@ function endTrib(ok) {
     partners().forEach(c => { c.lv = Math.max(c.lv, S.lv - 1); });
     log(`九道天雷尽数扛下，仙光自九天垂落。你破碎虚空，${partners().length ? '与' + pNames() + '一同' : ''}飞升仙界，成就${LEVELS[S.lv].name}！寿元增至 ${fmt(maxLifeY())} 年。`, 'gold');
     ripple(3, 'gold');
+    burst(LEVELS[S.lv].name, '破碎虚空 · 飞升仙界');
     S.sect.elder = S.sect.elder || (!S.sect.left && S.sect.rank >= 4);
     S.pending = { id: 'heaven' };
     save(); showModal();
@@ -1848,6 +2037,15 @@ function showModal() {
 let tab = 'trip';
 try { tab = localStorage.getItem('wendao-tab') || 'trip'; } catch (e) {}
 
+/* 数字往上涨时滚动着追上去，往下掉时直接跳到位 */
+const rolled = {};
+function rollTo(key, sel, target) {
+  let v = rolled[key];
+  if (v == null || !isFinite(v) || target <= v || target - v < 1) v = target;
+  else v += Math.max(1, (target - v) * .3);
+  rolled[key] = Math.min(v, target);
+  $(sel).textContent = fmt(rolled[key]);
+}
 function renderStatus() {
   const L = LEVELS[S.lv], q = req(S.lv);
   setHtml('#s-seal', (REALMS[L.r].seal || REALMS[L.r].n).split('').join('<br>'));
@@ -1862,9 +2060,9 @@ function renderStatus() {
   $('#s-mo-w').hidden = S.mo <= 0;
   $('#s-mo').textContent = `${Math.round(S.mo)} / 100`;
   $('#s-mobar').style.width = S.mo + '%';
-  $('#s-stones').textContent = fmt(S.stones);
+  rollTo('st', '#s-stones', S.stones);
   $('#s-herbs').textContent = fmt(S.herbs);
-  $('#s-pow').textContent = fmt(pwr());
+  rollTo('pw', '#s-pow', pwr());
   const pk = partners().length;
   $('#s-powd').textContent = `境界 ${(S.lv + 1) * 100}` + (S.fabao ? ` · 法宝 ×${fabaoMul().toFixed(2)}` : '') + (isPath('jian') ? ' · 剑修 ×1.35' : '') + (sk(10) ? ' · 诛仙 ×1.2' : '')
     + (pk ? ` · 道侣 ×${(1 + .1 * pk).toFixed(1)}` : '') + (S.injT > 0 ? ` · 负伤 ×${injMul()}` : '');
@@ -1895,7 +2093,8 @@ function renderStatus() {
   bgm(wantTrack());
 
   $('#c-realm').textContent = L.name;
-  $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (S.tideT > 0 ? ' · 灵潮' : '') + (p ? ' · 双修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
+  const eb = earlyBoost();
+  $('#c-rate').textContent = `每月 +${fmt(rate())} 修为` + (eb > 1 ? ` · 初入仙途 ×${+eb.toFixed(2)}` : '') + (S.tideT > 0 ? ' · 灵潮' : '') + (p ? ' · 双修' : '') + (S.injT > 0 ? ' · 负伤减半' : '');
   const full = S.xp >= q, b = $('#b-break');
   b.disabled = !full || !!S.over || !S.started;
   b.classList.toggle('ready', full);
@@ -1943,7 +2142,7 @@ function sideTrip() {
       <div class="act"><button class="btn sm" data-act="go" data-i="${i}" type="button">前往</button></div>
       <div class="meta">耗时 ${2 + L.t}–${4 + L.t} 月 · 妖兽战力 ${fmt(shown(locFoe(L)))} · 胜算 ${Math.round(w * 100)}%</div>
       <p>${L.d}</p>${fbHtml('go:' + i)}</div>`;
-  }).join('') + `</div><p class="note" style="margin-top:10px">历练途中不得修炼，岁月照常流逝。每处另有一桩奇遇，去得越多越容易撞见。${S.lv >= 2 && alive().length < compCap() ? '途中或有邂逅。' : ''}${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，此时斗法落败恐有陨落之危。</span>' : ''}</p>`;
+  }).join('') + `</div><p class="note" style="margin-top:10px">斗法演出：${btSkip ? '已关闭' : '已开启'} <button class="btn sm" data-act="bt-toggle" type="button">${btSkip ? '开启' : '关闭'}</button></p><p class="note" style="margin-top:6px">历练途中不得修炼，岁月照常流逝。每处另有一桩奇遇，去得越多越容易撞见。${S.lv >= 2 && alive().length < compCap() ? '途中或有邂逅。' : ''}${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，此时斗法落败恐有陨落之危。</span>' : ''}</p>`;
 }
 
 function sideSect() {
@@ -2062,9 +2261,27 @@ function sideTower() {
     <p class="note" style="margin-top:6px">战力 = 境界 × 法宝 × 道侣助阵（每位 +10%）。丹房可炼战意丹，下一战战力 ×1.3。${S.injT > 0 ? '<br><span style="color:var(--cinnabar)">你正负伤，战力打七折，可先服疗伤丹。</span>' : ''}</p>`;
 }
 
+const gearCard = (it, acts) => `<div class="item gear q${it.q}"><h3><span class="qn">${QUAL[it.q].n}</span>${esc(it.name)}</h3>
+  <div class="act">${acts}</div><p>${affText(it)}</p></div>`;
+function sideGear() {
+  const free = S.eq.indexOf(null) >= 0, full = S.bag.length >= BAG_CAP;
+  const sum = AFF_KEYS.filter(k => gear(k)).map(k => `${AFF[k].n} ${pctTxt(gear(k))}`).join(' · ');
+  const slots = S.eq.map((it, k) => it
+    ? gearCard(it, `<button class="btn sm" data-act="gear-off" data-i="${k}" type="button" ${full ? 'disabled' : ''}>卸下</button>`)
+    : `<div class="item gear empty"><h3>空位</h3><p>从储物袋中选一件佩戴。</p></div>`).join('');
+  const bag = S.bag.map((it, i) => gearCard(it,
+    `<button class="btn sm" data-act="gear-eq" data-i="${i}" type="button" ${free ? '' : 'disabled'}>佩戴</button>
+     <button class="btn sm" data-act="gear-sell" data-i="${i}" type="button">分解<small>灵石 ${fmt(itemValue(it))}</small></button>`)).join('');
+  return `<div class="sum"><div class="top"><span class="rank">灵宝</span><span class="chip">佩戴 ${S.eq.filter(Boolean).length} / 3</span></div>
+    <p class="note">${sum ? '当前加成：' + sum : '尚未佩戴灵宝。'}</p>
+    <p class="note">斗法得胜、镇妖塔妖王、宗门大比与奇遇中都可能得到灵宝。品质由低到高：${QUAL.map((q, i) => `<span class="qt${i}">${q.n}</span>`).join(' ')}，品质越高词条越多越强。转世后不保留。</p></div>
+    <h3 class="sec-h">佩戴</h3><div class="list">${slots}</div>
+    <h3 class="sec-h">储物袋 ${S.bag.length} / ${BAG_CAP}</h3><div class="list">${bag || '<p class="note">空空如也。</p>'}</div>
+    ${!free && S.bag.length ? '<p class="note" style="margin-top:8px">三个位置都满了，先卸下一件才能换上新的。</p>' : ''}`;
+}
 function renderSide() {
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
-  const f = { trip: sideTrip, tower: sideTower, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill }[tab] || sideTrip;
+  const f = { trip: sideTrip, tower: sideTower, sect: sideSect, comp: sideComp, home: sideHome, pill: sidePill, gear: sideGear }[tab] || sideTrip;
   setHtml('#side-body', f());
 }
 
@@ -2187,6 +2404,154 @@ function drawTrib(dt) {
   tctx.shadowBlur = 0; tctx.globalAlpha = 1;
 }
 
+/* ---------- 全屏特效：突破、出宝 ---------- */
+function burst(title, sub, kind) {
+  const el = $('#burst');
+  el.hidden = true; void el.offsetWidth;
+  el.className = 'burst ' + (kind || '');
+  $('#burst-t').textContent = title; $('#burst-s').textContent = sub || '';
+  el.hidden = false;
+  clearTimeout(burst.t);
+  burst.t = setTimeout(() => { el.hidden = true; }, kind === 'mini' ? 1300 : 2300);
+  if (kind !== 'mini' && !RM) { const a = $('.app'); a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake'); }
+}
+
+/* ---------- 斗法演出 ---------- */
+/* 胜负仍按胜算掷定（保持平衡、胜算显示准确），过程按双方战力演出：越强出手越重、结束越快 */
+const BT_KEY = 'wendao-bt-skip';
+let btSkip = false;
+try { btSkip = localStorage.getItem(BT_KEY) === '1'; } catch (e) {}
+let btQueue = null, btOn = null, afterBt = [];
+function queueBattle(o) { if (!btSkip) btQueue = o; }
+/* 战斗演出期间的特效（如出宝光效）等演完再放 */
+function fx(fn) { if (btQueue || btOn) afterBt.push(fn); else fn(); }
+function setBtSkip(v) {
+  btSkip = v;
+  try { localStorage.setItem(BT_KEY, v ? '1' : '0'); } catch (e) {}
+}
+function split(total, w) {
+  const s = w.reduce((a, b) => a + b, 0), out = w.map(x => Math.floor(total * x / s));
+  out[out.length - 1] += total - out.reduce((a, b) => a + b, 0);
+  return out;
+}
+function buildBattle(o) {
+  const P = Math.max(o.P, .01), E = Math.max(o.E, .01), ratio = E / P;
+  const myHP = Math.max(120, Math.round(P * 800)), foeHP = Math.max(120, Math.round(E * 800));
+  /* 决出胜负要几个回合：实力越悬殊越快 */
+  const n = clamp(Math.round(o.win ? 2 + 4 * ratio : 2 + 4 / ratio), 2, 8);
+  const myHits = n, foeHits = o.win ? n - 1 : n;
+  const healAt = isPath('dan') && foeHits >= 2 ? Math.floor(foeHits / 2) : -1;
+  const heal = healAt >= 0 ? Math.round(myHP * .25) : 0;
+  /* 赢了：对手血条打空，自己掉多少血看双方差距；输了反过来 */
+  const myTotal = o.win ? foeHP : Math.round(foeHP * clamp(.15 + .55 * Math.pow(1 / ratio, 1.5), .06, .9));
+  const foeTotal = (o.win ? Math.round(myHP * clamp(.15 + .55 * Math.pow(ratio, 1.5), .06, .9)) : myHP) + heal;
+  const crits = Array.from({ length: myHits }, () => Math.random() < (isPath('jian') ? .35 : .22));
+  const myW = crits.map(c => rnd(.8, 1.2) * (c ? 1.9 : 1));
+  const fbAt = S.fabao ? (o.win ? myHits - 1 : Math.floor(myHits / 2)) : -1;
+  if (fbAt >= 0) myW[fbAt] *= 1.6;
+  const myD = split(myTotal, myW), foeD = split(foeTotal, Array.from({ length: foeHits }, () => rnd(.8, 1.2)));
+  const ev = [];
+  for (let k = 0; k < myHits; k++) {
+    const e = { who: 'me', dmg: myD[k], crit: crits[k] };
+    if (k === fbAt) { e.fb = true; e.label = `祭出${fabaoName(S.fabao)}`; }
+    else if (isPath('jian') && Math.random() < .5) { e.multi = true; e.label = pick(['剑气纵横', '万剑归宗', '一剑西来']); }
+    else if (crits[k]) e.label = '暴击！';
+    ev.push(e);
+    if (k < foeHits) {
+      const f = { who: 'foe', dmg: foeD[k] };
+      if (isPath('ti') && Math.random() < .45) f.label = pick(['金身硬抗', '铜皮铁骨', '气血如炉']);
+      ev.push(f);
+      if (k === healAt) ev.push({ who: 'heal', dmg: heal, label: '服丹回元' });
+    }
+  }
+  return { ev, myHP, foeHP };
+}
+/* 妖兽立绘：有图的用图，其余仍用一个大字占位 */
+const MON_ART = {
+  '青狼妖': 'qinglang', '赤链蛇': 'chilian', '山魈': 'shanxiao',
+  '石精': 'shijing', '赤眼狼妖': 'chiyan', '血蝠': 'xuefu', '骷髅兵': 'kulou', '画皮狐妖': 'huapi',
+  '铁背熊罴': 'tiebei', '阴煞鬼将': 'yinsha', '三尾毒蝎': 'duxie', '火鸦': 'huoya',
+  '黑山妖王': 'heishan', '白骨夫人': 'baigu', '九头虫': 'jiutou', '金翅大鹏': 'dapeng', '六耳魔猿': 'liuer',
+  '赤炎魔龙': 'molong', '九尾天狐': 'jiuwei', '饕餮': 'taotie', '混世魔王': 'hunshi',
+};
+const monHtml = (name, boss) => MON_ART[name] ? `<img src="img/ys/${MON_ART[name]}.jpg" alt="">`
+  : `<div class="mon-ph ${boss ? 'boss' : ''}"><span>${esc([...name.replace(/^.+ · /, '')][0] || '妖')}</span></div>`;
+function showBattle(o) {
+  const B = buildBattle(o);
+  btOn = { o, B, i: 0, my: B.myHP, foe: B.foeHP, timer: 0 };
+  $('#bt-where').textContent = o.where || '';
+  $('#bt-foe-n').textContent = o.name;
+  $('#bt-foe-p').textContent = `${o.boss ? '妖王 · ' : ''}战力 ${fmt(Math.round(o.E * 100))}`;
+  $('#bt-me-n').textContent = S.name;
+  $('#bt-me-p').textContent = `战力 ${fmt(Math.round(o.P * 100))}${S.path ? ' · ' + PATHS[S.path].n : ''}`;
+  $('#bt-me-pt').innerHTML = playerBust('btme');
+  $('#bt-foe-pt').innerHTML = monHtml(o.name, o.boss);
+  $('#bt-foe-pt').classList.toggle('boss', !!o.boss);
+  $('#bt-auto').checked = btSkip;
+  say(o.boss ? '强敌现身' : '斗法开始');
+  updBt();
+  $('#bt').hidden = false;
+  btOn.timer = setTimeout(btStep, o.fast ? 450 : 750);
+}
+function say(html) { const m = $('#bt-mid'); m.className = 'bt-mid'; m.innerHTML = `<span class="say">${html}</span>`; }
+function updBt() {
+  const b = btOn;
+  $('#bt-me-hp').style.width = clamp(b.my / b.B.myHP, 0, 1) * 100 + '%';
+  $('#bt-foe-hp').style.width = clamp(b.foe / b.B.foeHP, 0, 1) * 100 + '%';
+  $('#bt-me-hpt').textContent = `${fmt(Math.max(0, b.my))} / ${fmt(b.B.myHP)}`;
+  $('#bt-foe-hpt').textContent = `${fmt(Math.max(0, b.foe))} / ${fmt(b.B.foeHP)}`;
+}
+function popDmg(sel, text, cls) {
+  const box = $(sel), s = document.createElement('span');
+  s.className = 'dmg ' + (cls || ''); s.textContent = text;
+  s.style.left = rnd(30, 70) + '%';
+  box.appendChild(s);
+  setTimeout(() => s.remove(), 950);
+}
+function hitFx(sel) { const el = $(sel); el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+function btShake() { const c = $('#bt-card'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }
+function btStep() {
+  const b = btOn;
+  if (!b) return;
+  const e = b.B.ev[b.i++];
+  if (!e) return btEnd();
+  if (e.who === 'me') {
+    b.foe -= e.dmg;
+    if (e.multi) { const parts = split(e.dmg, [1, 1.2, 1.5]); parts.forEach((d, j) => setTimeout(() => popDmg('#bt-foe-pt', fmt(d), j === 2 && e.crit ? 'crit' : ''), j * 110)); }
+    else popDmg('#bt-foe-pt', fmt(e.dmg), e.crit || e.fb ? 'crit' : '');
+    hitFx('#bt-foe-pt');
+    if (e.crit || e.fb) btShake();
+  } else if (e.who === 'foe') {
+    b.my -= e.dmg;
+    popDmg('#bt-me-pt', fmt(e.dmg), '');
+    hitFx('#bt-me-pt');
+  } else {
+    b.my += e.dmg;
+    popDmg('#bt-me-pt', '+' + fmt(e.dmg), 'heal');
+  }
+  if (e.fb) say(`<img src="${fabaoIcon(S.fabao)}" alt="">${esc(e.label)}`);
+  else if (e.label) say(esc(e.label));
+  updBt();
+  b.timer = setTimeout(btStep, b.o.fast ? 380 : 620);
+}
+function btEnd() {
+  const b = btOn, m = $('#bt-mid');
+  m.className = 'bt-mid ' + (b.o.win ? 'win' : 'lose');
+  m.innerHTML = `<span class="say">${b.o.win ? '胜' : '败'}</span>`;
+  b.timer = setTimeout(btClose, b.o.fast ? 700 : 1100);
+}
+function btClose() {
+  if (!btOn) return;
+  clearTimeout(btOn.timer);
+  btOn = null;
+  $('#bt').hidden = true;
+  const fns = afterBt; afterBt = [];
+  fns.forEach(f => f());
+  renderStatus(); renderSide(); renderLog();
+}
+$('#bt-skip').addEventListener('click', btClose);
+$('#bt-auto').addEventListener('change', e => setBtSkip(e.target.checked));
+
 /* ---------- 背景音乐 ---------- */
 /* 用 Web Audio 循环播放：<audio loop> 在 MP3 首尾会留一小段静音，循环时听得出断点 */
 /* calm：日常修炼《云间少年》；jing：大境界前修为圆满、等着冲关时《静水竹影》；trib：渡劫；peak：证道祖时放一遍《山巅决》 */
@@ -2307,6 +2672,8 @@ function hydrate(d) {
   const f = fresh(null);
   const s = Object.assign(f, d);
   s.sect = Object.assign(fresh(null).sect, d.sect || {});
+  if (!Array.isArray(s.bag)) s.bag = [];
+  if (!Array.isArray(s.eq) || s.eq.length !== 3) s.eq = [null, null, null];
   /* 旧存档只有一位道侣：迁移成列表，并补上形象 */
   if (!Array.isArray(d.comps)) s.comps = d.comp ? [d.comp] : [];
   delete s.comp;
@@ -2345,6 +2712,10 @@ document.addEventListener('click', e => {
   else if (a === 'away') { away = null; save(); showModal(); }
   else if (a === 'gallery') { ui = 'gallery'; showModal(); }
   else if (a === 'qiyu-book') { ui = 'qiyu'; showModal(); }
+  else if (a === 'gear-eq') act('', () => gearEquip(+i));
+  else if (a === 'gear-off') act('', () => gearOff(+i));
+  else if (a === 'gear-sell') act('', () => gearSell(+i));
+  else if (a === 'bt-toggle') setBtSkip(!btSkip);
   else if (a === 'close') { ui = null; showModal(); }
   else if (a === 'test') testRoot(false);
   else if (a === 'reroll') testRoot(true);
